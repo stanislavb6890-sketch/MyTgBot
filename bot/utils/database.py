@@ -261,6 +261,11 @@ def confirm_payment(payment_id: int, notification_id: str):
 
 # === Утилиты ===
 
+def get_db():
+    """Получить соединение с БД (алиас для совместимости)"""
+    return get_db_connection()
+
+
 def generate_username(telegram_id: int) -> str:
     """Генерация имени пользователя"""
     return f"user{telegram_id}"
