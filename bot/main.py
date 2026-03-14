@@ -15,6 +15,7 @@ from bot.handlers import (
     start_router, tariff_router, profile_router, 
     trial_router, payment_router
 )
+from bot.handlers.admin import admin_router
 from bot.handlers.payment import yoomoney_webhook
 
 logging.basicConfig(level=logging.INFO)
@@ -47,6 +48,7 @@ async def main():
     dp.include_router(profile_router)
     dp.include_router(trial_router)
     dp.include_router(payment_router)
+    dp.include_router(admin_router)
     
     # Запускаем on_startup
     await on_startup(bot)

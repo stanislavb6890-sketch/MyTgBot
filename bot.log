@@ -4,3 +4,7 @@ INFO:__main__:🤖 Бот работает в режиме Long Polling
 INFO:__main__:Напиши /start боту в Telegram!
 INFO:aiogram.dispatcher:Start polling
 INFO:aiogram.dispatcher:Run polling for bot @cloaknetvbot id=8287902513 - 'CloakNet чат-Bot'
+INFO:aiogram.event:Update id=406094655 is handled. Duration 85 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094656 is handled. Duration 122 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094657 is handled. Duration 84 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094658 is handled. Duration 46 ms by bot id=8287902513
