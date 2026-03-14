@@ -156,10 +156,10 @@ def create_subscription(
     cursor.execute("""
         INSERT INTO subscriptions 
         (user_id, remnawave_uuid, short_uuid, username, duration_days, traffic_limit_bytes,
-         devices_limit, servers_count, reset_type, is_trial, is_paid, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         devices_limit, servers_count, reset_type, is_trial, is_paid, price, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (user_id, remnawave_uuid, short_uuid, username, duration_days, traffic_limit_bytes,
-          devices_limit, servers_count, reset_type, is_trial, is_paid, expires_at))
+          devices_limit, servers_count, reset_type, is_trial, is_paid, price, expires_at))
 
     subscription_id = cursor.lastrowid
     conn.commit()

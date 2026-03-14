@@ -57,7 +57,7 @@ async def my_subscriptions(callback: CallbackQuery):
             expires_str = str(expires)
 
         duration = sub[6]
-        price = sub[16] if len(sub) > 16 and sub[16] else duration * 5
+        price = sub[17] if sub[17] else duration * 5
         payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub[0]}"
 
         text += f"""
@@ -172,7 +172,7 @@ async def pay_subscription(callback: CallbackQuery):
     
     # Цена = days * 5 (база)
     duration = sub[6]  # duration_days
-    price = sub[16] if len(sub) > 16 and sub[16] else duration * 5
+    price = sub[17] if sub[17] else duration * 5
     
     payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub_id}"
     
@@ -263,7 +263,7 @@ async def pay_unpaid(callback: CallbackQuery):
     
     sub_id = unpaid[0]
     duration = unpaid[6]
-    price = unpaid[16] if len(unpaid) > 16 and unpaid[16] else duration * 5
+    price = unpaid[17] if unpaid[17] else duration * 5
     
     payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub_id}"
     
@@ -305,9 +305,9 @@ async def delete_unpaid(callback: CallbackQuery):
             sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
             await sdk.users.delete_user(uuid=uuid)
         
-        asyncio.get_event_loop().run_until_complete(del_user())
+        asyncio.run(del_user())
     except Exception as e:
-        print(f"Error deleting user: {e}")
+        print(f"Error deleting user from panel: {e}")
     
     # Удаляем из базы
     import sqlite3
