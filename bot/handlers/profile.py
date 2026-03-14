@@ -57,7 +57,7 @@ async def my_subscriptions(callback: CallbackQuery):
             expires_str = str(expires)
 
         duration = sub[6]
-        price = sub[16] if len(sub) > 16 else duration * 5
+        price = sub[16] if len(sub) > 16 and sub[16] else duration * 5
         payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub[0]}"
 
         text += f"""
@@ -172,7 +172,7 @@ async def pay_subscription(callback: CallbackQuery):
     
     # Цена = days * 5 (база)
     duration = sub[6]  # duration_days
-    price = sub[16] if len(sub) > 16 else duration * 5
+    price = sub[16] if len(sub) > 16 and sub[16] else duration * 5
     
     payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub_id}"
     
@@ -263,7 +263,7 @@ async def pay_unpaid(callback: CallbackQuery):
     
     sub_id = unpaid[0]
     duration = unpaid[6]
-    price = duration * 5
+    price = unpaid[16] if len(unpaid) > 16 and unpaid[16] else duration * 5
     
     payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub_id}"
     
