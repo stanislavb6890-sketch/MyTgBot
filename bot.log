@@ -1,0 +1,6 @@
+INFO:__main__:🚀 Бот запускается...
+INFO:__main__:✅ База данных инициализирована
+INFO:__main__:🤖 Бот работает в режиме Long Polling
+INFO:__main__:Напиши /start боту в Telegram!
+INFO:aiogram.dispatcher:Start polling
+INFO:aiogram.dispatcher:Run polling for bot @cloaknetvbot id=8287902513 - 'CloakNet чат-Bot'
