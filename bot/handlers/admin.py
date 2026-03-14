@@ -43,6 +43,143 @@ async def admin_panel(message: types.Message):
     await message.answer("🔧 <b>Админ-панель</b>\n\nВыберите раздел:", reply_markup=keyboard)
 
 
+# === Быстрые команды ===
+
+@admin_router.message(Command("stats"))
+async def cmd_stats(message: types.Message):
+    """Статистика"""
+    if not is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён")
+        return
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM subscriptions WHERE status = 'active'")
+    active_subs = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT SUM(amount) FROM payments WHERE status = 'paid'")
+    total_revenue = cursor.fetchone()[0] or 0
+    
+    conn.close()
+    
+    await message.answer(f"""📊 <b>Статистика</b>
+
+👥 Пользователей: {total_users}
+🔗 Активных подписок: {active_subs}
+💰 Доход: {total_revenue:.2f} ₽""")
+
+
+@admin_router.message(Command("users"))
+async def cmd_users(message: types.Message):
+    """Список пользователей"""
+    if not is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён")
+        return
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT telegram_id, username, first_name, created_at, has_trial, purchase_count
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT 20
+    """)
+    users = cursor.fetchall()
+    conn.close()
+    
+    if not users:
+        await message.answer("👥 Пользователей пока нет")
+        return
+    
+    text = "👥 <b>Пользователи:</b>\n\n"
+    for u in users:
+        tg_id, username, first_name, created, has_trial, purchases = u
+        name = first_name or username or "—"
+        trial_mark = " ✅" if has_trial else ""
+        text += f"• {name} (TG: {tg_id}){trial_mark}\n"
+        text += f"  Покупок: {purchases} | {created[:10]}\n\n"
+    
+    await message.answer(text)
+
+
+@admin_router.message(Command("payments"))
+async def cmd_payments(message: types.Message):
+    """Список платежей"""
+    if not is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён")
+        return
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT p.amount, p.status, p.created_at, u.username, u.first_name
+        FROM payments p
+        JOIN users u ON p.user_id = u.id
+        ORDER BY p.created_at DESC
+        LIMIT 15
+    """)
+    payments = cursor.fetchall()
+    
+    cursor.execute("SELECT SUM(amount) FROM payments WHERE status = 'paid'")
+    total = cursor.fetchone()[0] or 0
+    
+    conn.close()
+    
+    if not payments:
+        await message.answer("💳 Платежей пока нет")
+        return
+    
+    text = f"💳 <b>Платежи</b> (всего: {total:.2f} ₽)\n\n"
+    for p in payments:
+        amount, status, created, username, first_name = p
+        name = first_name or username or "—"
+        status_emoji = "✅" if status == "paid" else "⏳"
+        text += f"{status_emoji} {amount:.2f} ₽ — {name} | {created[:16]}\n"
+    
+    await message.answer(text)
+
+
+@admin_router.message(Command("subs"))
+async def cmd_subs(message: types.Message):
+    """Список подписок"""
+    if not is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён")
+        return
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT s.username, s.status, s.expires_at, s.is_trial, u.first_name, u.username
+        FROM subscriptions s
+        JOIN users u ON s.user_id = u.id
+        ORDER BY s.created_at DESC
+        LIMIT 15
+    """)
+    subs = cursor.fetchall()
+    conn.close()
+    
+    if not subs:
+        await message.answer("🔗 Подписок пока нет")
+        return
+    
+    text = "🔗 <b>Подписки:</b>\n\n"
+    for s in subs:
+        username, status, expires, is_trial, first_name, uname = s
+        name = first_name or uname or username
+        status_text = "✅" if status == "active" else "❌"
+        trial_text = " 🧪" if is_trial else ""
+        text += f"{status_text} {name}{trial_text} — истекает {expires[:16]}\n"
+    
+    await message.answer(text)
+
+
 # === Статистика ===
 
 @admin_router.callback_query(F.data == "admin_stats")
