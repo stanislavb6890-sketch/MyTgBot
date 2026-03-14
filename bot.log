@@ -36,3 +36,25 @@ INFO:aiogram.event:Update id=406094681 is handled. Duration 59 ms by bot id=8287
 INFO:aiogram.event:Update id=406094682 is handled. Duration 50 ms by bot id=8287902513
 INFO:aiogram.event:Update id=406094683 is handled. Duration 52 ms by bot id=8287902513
 INFO:aiogram.event:Update id=406094684 is handled. Duration 70 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094685 is handled. Duration 38 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094686 is handled. Duration 57 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094687 is handled. Duration 31 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094688 is handled. Duration 53 ms by bot id=8287902513
+/root/.openclaw/workspace/vpn-bot/bot/handlers/profile.py:310: RuntimeWarning: coroutine 'delete_unpaid.<locals>.del_user' was never awaited
+  print(f"Error deleting user: {e}")
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+INFO:aiogram.event:Update id=406094689 is handled. Duration 81 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094690 is handled. Duration 52 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094691 is handled. Duration 88 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094692 is handled. Duration 140 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094693 is handled. Duration 57 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094694 is handled. Duration 117 ms by bot id=8287902513
+INFO:httpx:HTTP Request: GET https://pal.goodred.pro/api/internal-squads "HTTP/1.1 200 OK"
+INFO:aiogram.event:Update id=406094695 is handled. Duration 267 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094696 is handled. Duration 21 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094697 is handled. Duration 81 ms by bot id=8287902513
+INFO:httpx:HTTP Request: POST https://pal.goodred.pro/api/users "HTTP/1.1 201 Created"
+INFO:aiogram.event:Update id=406094698 is handled. Duration 423 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094699 is handled. Duration 228 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094700 is handled. Duration 47 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406094701 is handled. Duration 60 ms by bot id=8287902513

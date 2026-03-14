@@ -184,7 +184,12 @@ def get_user_subscriptions(user_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT s.*, GROUP_CONCAT(ss.node_name, ', ') as servers
+        SELECT s.id, s.user_id, s.remnawave_uuid, s.short_uuid, s.username, s.status,
+               s.duration_days, s.traffic_limit_bytes, s.traffic_used_bytes,
+               s.devices_limit, s.servers_count, s.reset_type, s.is_trial, s.is_paid,
+               s.created_at, s.expires_at, s.activated_at,
+               COALESCE(s.price, s.duration_days * 5) as price,
+               GROUP_CONCAT(ss.node_name, ', ') as servers
         FROM subscriptions s
         LEFT JOIN subscription_servers ss ON s.id = ss.subscription_id
         WHERE s.user_id = ?
