@@ -1,12 +1,15 @@
 """Клавиатуры бота"""
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import TARIFFS
+from config import TARIFFS, WEBHOOK_URL
 
 
 def get_main_keyboard(has_subscription: bool = False, has_trial: bool = False):
     """Главная клавиатура"""
     keyboard = InlineKeyboardBuilder()
+    
+    # Web App кнопка
+    keyboard.button(text="🌐 Открыть App", web_app=WebAppInfo(url="https://test.cloaknet.site/miniapp"))
     
     # Кабинет - только если есть подписка и мы не в кабинете
     if has_subscription:
@@ -19,7 +22,7 @@ def get_main_keyboard(has_subscription: bool = False, has_trial: bool = False):
     if not has_trial:
         keyboard.button(text="💳 Тестовый период", callback_data="get_trial")
     
-    keyboard.adjust(1)
+    keyboard.adjust(1, 2)
     return keyboard.as_markup()
 
 

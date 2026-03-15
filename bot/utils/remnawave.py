@@ -202,6 +202,37 @@ async def get_subscription_links(uuid: str) -> dict:
     return await client.get_subscription_links(uuid)
 
 
+def delete_vpn_user(uuid: str) -> bool:
+    """Удалить VPN пользователя (синхронная обёртка)"""
+    try:
+        # Создаём новый event loop для удаления
+        import asyncio
+        
+        async def _delete():
+            client = RemnaWaveClient()
+            await client.delete_user(uuid)
+        
+        # Пробуем использовать новый loop
+        try:
+            loop = asyncio.get_running_loop()
+            # Если уже есть запущенный loop - создаём задачу
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(asyncio.run, _delete())
+                return future.result()
+        except RuntimeError:
+            # Нет запущенного loop - используем asyncio.run
+            asyncio.run(_delete())
+            return True
+    except Exception as e:
+        err_str = str(e)
+        # Если пользователь уже удалён - тоже ок
+        if "not found" in err_str.lower() or "A025" in err_str:
+            return True
+        print(f"Error deleting user: {e}")
+        return False
+
+
 if __name__ == "__main__":
     async def test():
         client = RemnaWaveClient()

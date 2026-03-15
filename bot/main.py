@@ -1,15 +1,15 @@
-"""Главный файл бота - Long Polling режим"""
+"""Главный файл бота - Long Polling + Web App"""
 import asyncio
 import logging
 import sys
 import os
+from aiohttp import web
 
 # Добавляем путь для импортов
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aiogram import Bot, Dispatcher
-from aiohttp import web
-from config import BOT_TOKEN
+from config import BOT_TOKEN, WEBHOOK_URL
 from bot.utils.database import init_db
 from bot.handlers import (
     start_router, tariff_router, profile_router, 
@@ -17,9 +17,18 @@ from bot.handlers import (
 )
 from bot.handlers.admin import admin_router
 from bot.handlers.payment import yoomoney_webhook
+from bot.api import setup_api_routes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Web App route
+async def webapp_handler(request):
+    """Обслуживание Web App"""
+    app_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'webapp', 'index.html')
+    with open(app_path, 'r', encoding='utf-8') as f:
+        return web.Response(text=f.read(), content_type='text/html')
 
 
 async def on_startup(bot: Bot):
@@ -36,8 +45,28 @@ async def on_shutdown(bot: Bot):
     logger.info("🛑 Бот выключается...")
 
 
+async def web_server():
+    """Веб-сервер для Web App"""
+    app = web.Application()
+    
+    # Подключаем API
+    setup_api_routes(app)
+    
+    app.router.add_get('/miniapp', webapp_handler)
+    app.router.add_get('/app', webapp_handler)  # совместимость
+    app.router.add_post('/webhook/yoomoney', yoomoney_webhook)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
+    
+    logger.info("🌐 Веб-сервер запущен на порту 8080")
+
+
 async def main():
-    """Основная функция - Long Polling"""
+    """Основная функция"""
     # Инициализация бота
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
@@ -53,14 +82,11 @@ async def main():
     # Запускаем on_startup
     await on_startup(bot)
     
-    logger.info("🤖 Бот работает в режиме Long Polling")
-    logger.info("Напиши /start боту в Telegram!")
-    
-    # Удаляем webhook если был
-    await bot.delete_webhook()
-    
-    # Запускаем polling
-    await dp.start_polling(bot)
+    # Запускаем веб-сервер и polling параллельно
+    await asyncio.gather(
+        web_server(),
+        dp.start_polling(bot)
+    )
 
 
 if __name__ == "__main__":

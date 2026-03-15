@@ -295,17 +295,10 @@ async def delete_unpaid(callback: CallbackQuery):
     sub_id = unpaid[0]
     uuid = unpaid[2]  # remnawave_uuid
     
-    # Удаляем из панели
+    # Удаляем из панели (если возможно)
     try:
-        import asyncio
-        from remnawave import RemnawaveSDK
-        from config import REMNAWAVE_URL, REMNAWAVE_TOKEN
-        
-        async def del_user():
-            sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
-            await sdk.users.delete_user(uuid=uuid)
-        
-        asyncio.run(del_user())
+        from bot.utils.remnawave import delete_vpn_user
+        delete_vpn_user(uuid)  # Результат не важен - удаляем из базы в любом случае
     except Exception as e:
         print(f"Error deleting user from panel: {e}")
     
