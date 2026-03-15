@@ -18,3 +18,11 @@ Traceback (most recent call last):
   File "/root/.openclaw/workspace/vpn-bot/send_notifications.py", line 18, in <module>
     from aiogram import Bot
 ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/vpn-bot/send_notifications.py", line 18, in <module>
+    from aiogram import Bot
+ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/vpn-bot/send_notifications.py", line 18, in <module>
+    from aiogram import Bot
+ModuleNotFoundError: No module named 'aiogram'
