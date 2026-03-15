@@ -604,6 +604,125 @@ async def register_referral(request):
     return web.json_response({'success': True})
 
 
+# === Админ API ===
+async def admin_get_stats(request):
+    """Статистика для админа"""
+    from config import ADMIN_ID
+    
+    # Простая проверка через query параметр (в реальном проекте использовать сессии/JWT)
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Статистика пользователей
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
+    
+    # Статистика подписок
+    cursor.execute("SELECT COUNT(*) FROM subscriptions")
+    total_subs = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM subscriptions WHERE status = 'active'")
+    active_subs = cursor.fetchone()[0]
+    
+    # Общий баланс
+    cursor.execute("SELECT COALESCE(SUM(balance), 0) FROM users")
+    total_balance = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return web.json_response({
+        'total_users': total_users,
+        'total_subscriptions': total_subs,
+        'active_subscriptions': active_subs,
+        'total_balance': total_balance
+    })
+
+
+async def admin_get_users(request):
+    """Список пользователей"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT u.id, u.telegram_id, u.username, u.first_name, u.balance, 
+               u.referral_bonus, u.created_at,
+               (SELECT COUNT(*) FROM subscriptions WHERE user_id = u.id) as sub_count
+        FROM users u
+        ORDER BY u.id DESC
+        LIMIT 100
+    """)
+    
+    users = []
+    for row in cursor.fetchall():
+        users.append({
+            'id': row[0],
+            'telegram_id': row[1],
+            'username': row[2],
+            'first_name': row[3],
+            'balance': row[4],
+            'referral_bonus': row[5],
+            'created_at': row[6],
+            'subscription_count': row[7]
+        })
+    
+    conn.close()
+    return web.json_response({'users': users})
+
+
+async def admin_get_subscriptions(request):
+    """Список подписок"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT s.id, s.user_id, s.status, s.is_paid, s.price, s.expires_at, s.created_at,
+               GROUP_CONCAT(ss.node_name) as servers
+        FROM subscriptions s
+        LEFT JOIN subscription_servers ss ON s.id = ss.subscription_id
+        GROUP BY s.id
+        ORDER BY s.id DESC
+        LIMIT 100
+    """)
+    
+    subs = []
+    for row in cursor.fetchall():
+        subs.append({
+            'id': row[0],
+            'user_id': row[1],
+            'status': row[2],
+            'is_paid': bool(row[3]),
+            'price': row[4],
+            'expires_at': row[5],
+            'created_at': row[6],
+            'servers_list': row[7]
+        })
+    
+    conn.close()
+    return web.json_response({'subscriptions': subs})
+
+
+async def admin_get_payments(request):
+    """Список платежей (упрощённый)"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    # Пока возвращаем пустой список - нужно отдельную таблицу платежей
+    return web.json_response({'payments': []})
+
+
 def setup_api_routes(app):
     """Настроить API маршруты"""
     app.router.add_get('/api/user', get_user_data)
@@ -618,4 +737,9 @@ def setup_api_routes(app):
     # Реферальная система
     app.router.add_get('/api/referral', get_referral_info)
     app.router.add_post('/api/referral/register', register_referral)
+    # Админ
+    app.router.add_get('/api/admin/stats', admin_get_stats)
+    app.router.add_get('/api/admin/users', admin_get_users)
+    app.router.add_get('/api/admin/subscriptions', admin_get_subscriptions)
+    app.router.add_get('/api/admin/payments', admin_get_payments)
     logger.info("✅ API routes настроены")

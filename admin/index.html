@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloakNet Admin</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1c1c1c;
+            --accent: #22d3ee;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --danger: #f87171;
+            --success: #22d3ee;
+            --border: #27272a;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .header h1 { font-size: 24px; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        
+        .stat-card .label {
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        
+        .section { margin-bottom: 32px; }
+        
+        .section h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        
+        tr:hover { background: var(--bg-secondary); }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge.active { background: rgba(34, 211, 238, 0.2); color: var(--accent); }
+        .badge.inactive { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .btn-danger { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
+        .btn-danger:hover { background: rgba(248, 113, 113, 0.3); }
+        
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        
+        .tab {
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        
+        .tab.active {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ CloakNet Admin</h1>
+        <div id="admin-info"></div>
+    </div>
+    
+    <div class="stats" id="stats"></div>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('users')">👥 Пользователи</div>
+        <div class="tab" onclick="switchTab('subscriptions')">📱 Подписки</div>
+        <div class="tab" onclick="switchTab('payments')">💳 Платежи</div>
+    </div>
+    
+    <div id="users" class="tab-content active"></div>
+    <div id="subscriptions" class="tab-content"></div>
+    <div id="payments" class="tab-content"></div>
+    
+    <button class="refresh-btn" onclick="loadAll()">🔄</button>
+    
+    <script>
+        const API = 'https://test.cloaknet.site';
+        const ADMIN_KEY = 'admin_secret_key_2026';
+        
+        async function loadStats() {
+            const resp = await fetch(`${API}/api/admin/stats?key=${ADMIN_KEY}`);
+            const data = await resp.json();
+            
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card">
+                    <div class="label">Всего пользователей</div>
+                    <div class="value">${data.total_users || 0}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Всего подписок</div>
+                    <div class="value">${data.total_subscriptions || 0}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Активных</div>
+                    <div class="value">${data.active_subscriptions || 0}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Общий баланс</div>
+                    <div class="value">${(data.total_balance || 0).toFixed(0)}₽</div>
+                </div>
+            `;
+        }
+        
+        async function loadUsers() {
+            const resp = await fetch(`${API}//api/admin/users?key=${ADMIN_KEY}`);
+            const data = await resp.json();
+            
+            if (!data.users || data.users.length === 0) {
+                document.getElementById('users').innerHTML = '<p style="color: var(--text-secondary);">Нет пользователей</p>';
+                return;
+            }
+            
+            document.getElementById('users').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Telegram</th>
+                            <th>Имя</th>
+                            <th>Баланс</th>
+                            <th>Бонус реф.</th>
+                            <th>Подписки</th>
+                            <th>Дата</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.users.map(u => `
+                            <tr>
+                                <td>${u.id}</td>
+                                <td>${u.telegram_id}</td>
+                                <td>${u.first_name || '-'} ${u.username ? '@' + u.username : ''}</td>
+                                <td style="color: var(--accent);">${u.balance?.toFixed(0) || 0}₽</td>
+                                <td>${u.referral_bonus?.toFixed(0) || 0}₽</td>
+                                <td>${u.subscription_count || 0}</td>
+                                <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        async function loadSubscriptions() {
+            const resp = await fetch(`${API}//api/admin/subscriptions?key=${ADMIN_KEY}`);
+            const data = await resp.json();
+            
+            if (!data.subscriptions || data.subscriptions.length === 0) {
+                document.getElementById('subscriptions').innerHTML = '<p style="color: var(--text-secondary);">Нет подписок</p>';
+                return;
+            }
+            
+            document.getElementById('subscriptions').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Пользователь</th>
+                            <th>Статус</th>
+                            <th>Оплачено</th>
+                            <th>Цена</th>
+                            <th>Истекает</th>
+                            <th>Серверы</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.subscriptions.map(s => `
+                            <tr>
+                                <td>${s.id}</td>
+                                <td>${s.user_id}</td>
+                                <td><span class="badge ${s.status}">${s.status}</span></td>
+                                <td><span class="badge ${s.is_paid ? 'active' : 'inactive'}">${s.is_paid ? 'Да' : 'Нет'}</span></td>
+                                <td>${s.price || 0}₽</td>
+                                <td>${s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '-'}</td>
+                                <td>${s.servers_list || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        async function loadPayments() {
+            const resp = await fetch(`${API}//api/admin/payments?key=${ADMIN_KEY}`);
+            const data = await resp.json();
+            
+            if (!data.payments || data.payments.length === 0) {
+                document.getElementById('payments').innerHTML = '<p style="color: var(--text-secondary);">Нет платежей</p>';
+                return;
+            }
+            
+            document.getElementById('payments').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Сумма</th>
+                            <th>Дата</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.payments.map(p => `
+                            <tr>
+                                <td>${p.id}</td>
+                                <td style="color: var(--accent);">+${p.amount?.toFixed(0) || 0}₽</td>
+                                <td>${p.created_at ? new Date(p.created_at).toLocaleString() : '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(tab).classList.add('active');
+        }
+        
+        async function loadAll() {
+            await Promise.all([loadStats(), loadUsers(), loadSubscriptions(), loadPayments()]);
+        }
+        
+        loadAll();
+    </script>
+</body>
+</html>

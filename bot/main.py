@@ -56,6 +56,13 @@ async def web_server():
     app.router.add_get('/app', webapp_handler)  # совместимость
     app.router.add_post('/webhook/yoomoney', yoomoney_webhook)
     
+    # Admin panel - отдаём статику
+    import pathlib
+    admin_path = pathlib.Path(__file__).parent.parent / 'admin'
+    if admin_path.exists():
+        app.router.add_get('/admin', lambda r: web.FileResponse(admin_path / 'index.html'))
+        app.router.add_get('/admin/{file:.*}', lambda r: web.FileResponse(admin_path / r.match_info['file']))
+    
     runner = web.AppRunner(app)
     await runner.setup()
     
