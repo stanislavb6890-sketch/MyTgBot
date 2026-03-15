@@ -624,7 +624,15 @@
 </head>
 <body>
     <div class="header">
-        <h1>🛡️ CloakNet</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <h1>CloakNet</h1>
+            <div id="header-balance" style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--text-secondary); font-size: 13px;">Баланс:</span>
+                <span id="header-balance-value" style="color: var(--accent); font-weight: 700;">—</span>
+                <span style="color: var(--accent);">₽</span>
+                <span onclick="topupBalance()" style="cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 500;">+ Пополнить</span>
+            </div>
+        </div>
     </div>
     
     <div class="container" id="content">
@@ -703,6 +711,12 @@
                 
                 userData = data.user;
                 subscriptions = data.subscriptions || [];
+                
+                // Обновляем баланс в header
+                const balanceEl = document.getElementById('header-balance-value');
+                if (balanceEl && userData?.balance !== undefined) {
+                    balanceEl.textContent = userData.balance.toFixed(0);
+                }
             } catch (e) {
                 console.error('Error loading data:', e);
             }
@@ -788,15 +802,6 @@
             
             if (subscriptions.length === 0) {
                 content.innerHTML = `
-                    <div class="stat-card" style="margin-bottom: 16px; background: linear-gradient(135deg, #1a1a1a, #242424);">
-                        <div style="margin-bottom: 12px;">
-                            <div class="stat-card" style="text-align: center; padding: 12px;">
-                                <span style="color: #888;">💰 Баланс:</span>
-                                <span style="font-size: 20px; font-weight: bold; color: #00d4aa; margin-left: 8px;">${userData?.balance || 0}₽</span>
-                                <span onclick="topupBalance()" style="cursor: pointer; margin-left: 12px; font-size: 18px;">➕</span>
-                            </div>
-                        </div>
-                    </div>
                     <div class="empty-state">
                         <div class="icon">📭</div>
                         <h3>Нет подписок</h3>
@@ -808,15 +813,6 @@
             }
             
             let html = `
-                <div style="margin-bottom: 12px;">
-                    <div class="stat-card" style="text-align: center; padding: 12px;">
-                        <span style="color: #888;">💰 Баланс:</span>
-                        <span style="font-size: 20px; font-weight: bold; color: #00d4aa; margin-left: 8px;">${userData?.balance || 0}₽</span>
-                        <span onclick="topupBalance()" style="cursor: pointer; margin-left: 12px; font-size: 18px;">➕</span>
-                    </div>
-                </div>
-                </div>
-                
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">Подписки</div>
