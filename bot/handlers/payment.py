@@ -5,7 +5,7 @@ from aiohttp import web
 import hashlib
 import hmac
 import json
-from bot.utils.database import confirm_payment, activate_subscription, get_subscription_by_uuid
+from bot.utils.database import confirm_payment, activate_subscription, get_subscription_by_uuid, get_db_connection
 from bot.utils.remnawave import enable_vpn_user
 from config import YOOMONEY_SECRET
 import asyncio
@@ -36,17 +36,26 @@ async def yoomoney_webhook(request):
         
         # Подтверждаем платёж
         if label and amount:
-            payment_id = int(label)
-            
-            # Находим подписку по payment_id
-            # Здесь нужно получить subscription_id из payments таблицы
-            
-            # Активируем подписку
-            # TODO: Доделать активацию
-            
-            confirm_payment(payment_id, notification_id)
-            
-            print(f"✅ Платёж подтверждён: {payment_id}")
+            # Проверяем: пополнение баланса или оплата подписки
+            if label.startswith("topup_"):
+                # Пополнение баланса: topup_{user_id}_{amount}
+                parts = label.split("_")
+                if len(parts) == 3:
+                    user_id = int(parts[1])
+                    amount = float(amount)
+                    
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
+                    conn.commit()
+                    conn.close()
+                    
+                    print(f"✅ Баланс пополнен: user_id={user_id}, amount={amount}")
+            else:
+                # Оплата подписки
+                payment_id = int(label)
+                confirm_payment(payment_id, notification_id)
+                print(f"✅ Платёж подтверждён: {payment_id}")
         
         return web.Response(text="OK")
     

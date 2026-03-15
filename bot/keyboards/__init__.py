@@ -4,12 +4,15 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import TARIFFS, WEBHOOK_URL
 
 
-def get_main_keyboard(has_subscription: bool = False, has_trial: bool = False):
+def get_main_keyboard(has_subscription: bool = False, has_trial: bool = False, telegram_id: int = None):
     """Главная клавиатура"""
     keyboard = InlineKeyboardBuilder()
     
-    # Web App кнопка
-    keyboard.button(text="🌐 Открыть App", web_app=WebAppInfo(url="https://test.cloaknet.site/miniapp"))
+    # Web App кнопка - добавляем user_id если есть
+    app_url = "https://test.cloaknet.site/miniapp"
+    if telegram_id:
+        app_url += f"?user_id={telegram_id}"
+    keyboard.button(text="🌐 Открыть App", web_app=WebAppInfo(url=app_url))
     
     # Кабинет - только если есть подписка и мы не в кабинете
     if has_subscription:

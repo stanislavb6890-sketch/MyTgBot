@@ -636,24 +636,31 @@
         async function loadData() {
             showLoading();
             
-            const telegramId = tg.initDataUnsafe?.user?.id;
+            let telegramId = null;
+            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                telegramId = tg.initDataUnsafe.user.id;
+            }
+            if (!telegramId) {
+                const params = new URLSearchParams(window.location.search);
+                telegramId = params.get('user_id') || params.get('telegram_id');
+            }
             
             if (!telegramId) {
-                // Демо режим без Telegram
                 renderSubscriptions();
                 return;
             }
             
             try {
-                const response = await fetch(`${API_BASE}/api/user?telegram_id=${telegramId}`);
+                const response = await fetch(`${API_BASE}/api/user?user_id=${telegramId}`);
                 const data = await response.json();
                 
                 userData = data.user;
                 subscriptions = data.subscriptions || [];
             } catch (e) {
                 console.error('Error loading data:', e);
-                // fallback к демо
             }
+            
+            renderSubscriptions();
             
             // Проверяем URL параметр для автообновления
             const urlParams = new URLSearchParams(window.location.search);
@@ -674,11 +681,73 @@
             `;
         }
         
+        function topupBalance() {
+            let telegramId = null;
+            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                telegramId = tg.initDataUnsafe.user.id;
+            }
+            if (!telegramId) {
+                const params = new URLSearchParams(window.location.search);
+                telegramId = params.get('user_id') || params.get('telegram_id');
+            }
+            
+            const amount = prompt('Введите сумму пополнения (минимум 10₽):', '500');
+            if (!amount || parseFloat(amount) < 10) {
+                alert('Минимальная сумма 10₽');
+                return;
+            }
+            
+            fetch(`${API_BASE}/api/balance/topup?user_id=${telegramId}&amount=${amount}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.payment_url) {
+                        window.location.href = data.payment_url;
+                    } else {
+                        alert('Ошибка: ' + (data.error || 'Unknown'));
+                    }
+                })
+                .catch(e => alert('Ошибка при получении ссылки'));
+        }
+        
+        function payWithBalance(subId, price) {
+            let telegramId = null;
+            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                telegramId = tg.initDataUnsafe.user.id;
+            }
+            if (!telegramId) {
+                const params = new URLSearchParams(window.location.search);
+                telegramId = params.get('user_id') || params.get('telegram_id');
+            }
+            
+            if (!confirm(`Оплатить подписку #${subId} на ${price}₽ с баланса?`)) return;
+            
+            fetch(`${API_BASE}/api/subscription/pay?user_id=${telegramId}&sub_id=${subId}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Подписка оплачена! Остаток: ' + data.remaining_balance.toFixed(2) + '₽');
+                        loadData();
+                    } else {
+                        alert('❌ Ошибка: ' + (data.error || 'Unknown'));
+                    }
+                })
+                .catch(e => alert('❌ Ошибка: ' + e.message));
+        }
+        
         function renderSubscriptions() {
             const content = document.getElementById('content');
             
             if (subscriptions.length === 0) {
                 content.innerHTML = `
+                    <div class="stat-card" style="margin-bottom: 16px; background: linear-gradient(135deg, #1a1a1a, #242424);">
+                        <div style="margin-bottom: 12px;">
+                            <div class="stat-card" style="text-align: center; padding: 12px;">
+                                <span style="color: #888;">💰 Баланс:</span>
+                                <span style="font-size: 20px; font-weight: bold; color: #00d4aa; margin-left: 8px;">${userData?.balance || 0}₽</span>
+                                <span onclick="topupBalance()" style="cursor: pointer; margin-left: 12px; font-size: 18px;">➕</span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="empty-state">
                         <div class="icon">📭</div>
                         <h3>Нет подписок</h3>
@@ -690,6 +759,15 @@
             }
             
             let html = `
+                <div style="margin-bottom: 12px;">
+                    <div class="stat-card" style="text-align: center; padding: 12px;">
+                        <span style="color: #888;">💰 Баланс:</span>
+                        <span style="font-size: 20px; font-weight: bold; color: #00d4aa; margin-left: 8px;">${userData?.balance || 0}₽</span>
+                        <span onclick="topupBalance()" style="cursor: pointer; margin-left: 12px; font-size: 18px;">➕</span>
+                    </div>
+                </div>
+                </div>
+                
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">Подписки</div>
@@ -857,8 +935,11 @@
                 `;
             } else if (!isPaid) {
                 html += `
-                    <button class="btn btn-primary" onclick="getPaymentUrl(${sub.id})">
-                        💳 Оплатить
+                    <button class="btn btn-primary" onclick="payWithBalance(${sub.id}, ${sub.price || 0})" style="margin-bottom: 8px;">
+                        💰 С баланса (${sub.price || 0}₽)
+                    </button>
+                    <button class="btn btn-secondary" onclick="getPaymentUrl(${sub.id})" style="margin-bottom: 8px;">
+                        💳 С карты (${sub.price || 0}₽)
                     </button>
                     <button class="btn btn-danger" onclick="deleteSubscription(${sub.id})">
                         ❌ Удалить подписку

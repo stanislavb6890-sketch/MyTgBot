@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 async def get_user_data(request):
     """Получить данные пользователя"""
-    # Получаем telegram_id из URL параметра или заголовка
-    telegram_id = request.query.get('telegram_id')
+    # Получаем telegram_id из URL параметра (поддерживаем both telegram_id and user_id)
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
     
     if not telegram_id:
         return web.json_response({'error': 'telegram_id required'}, status=400)
@@ -24,7 +24,7 @@ async def get_user_data(request):
     cursor = conn.cursor()
     
     # Получаем пользователя
-    cursor.execute("SELECT id, telegram_id, username, first_name, has_trial, purchase_count FROM users WHERE telegram_id = ?", (telegram_id,))
+    cursor.execute("SELECT id, telegram_id, username, first_name, has_trial, purchase_count, COALESCE(balance, 0) as balance FROM users WHERE telegram_id = ?", (telegram_id,))
     user_row = cursor.fetchone()
     
     if not user_row:
@@ -40,14 +40,15 @@ async def get_user_data(request):
         'username': user_row[2],
         'first_name': user_row[3],
         'has_trial': bool(user_row[4]),
-        'purchase_count': user_row[5]
+        'purchase_count': user_row[5],
+        'balance': user_row[6] if len(user_row) > 6 else 0
     }
     
     # Получаем подписки
     cursor.execute("""
         SELECT s.id, s.status, s.expires_at, s.traffic_limit_bytes, s.traffic_used_bytes,
                s.devices_limit, s.servers_count, s.is_trial, s.is_paid, s.short_uuid,
-               GROUP_CONCAT(ss.node_name, ', ') as servers
+               s.price, GROUP_CONCAT(ss.node_name, ', ') as servers
         FROM subscriptions s
         LEFT JOIN subscription_servers ss ON s.id = ss.subscription_id
         WHERE s.user_id = ?
@@ -74,7 +75,8 @@ async def get_user_data(request):
             'is_trial': bool(row[7]),
             'is_paid': bool(row[8]),
             'short_uuid': row[9],
-            'servers_list': row[10] or ''
+            'price': row[10],
+            'servers_list': row[11] or ''
         })
     
     return web.json_response({
@@ -254,7 +256,7 @@ async def get_renewal_options(request):
 
 async def get_user_payments(request):
     """Получить историю платежей пользователя"""
-    telegram_id = request.query.get('telegram_id')
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
     
     if not telegram_id:
         return web.json_response({'error': 'telegram_id required'}, status=400)
@@ -291,6 +293,114 @@ async def get_user_payments(request):
     return web.json_response({'payments': payments})
 
 
+async def get_balance_topup(request):
+    """Получить ссылку для пополнения баланса"""
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
+    amount = request.query.get('amount')
+    
+    if not telegram_id:
+        return web.json_response({'error': 'telegram_id required'}, status=400)
+    
+    if not amount:
+        return web.json_response({'error': 'amount required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+        amount = float(amount)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    if amount < 10:
+        return web.json_response({'error': 'min amount is 10'}, status=400)
+    
+    # Получаем user_id
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE telegram_id = ?", (telegram_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user_id = row[0]
+    
+    # Создаём label для пополнения: topup_{user_id}_{amount}
+    from config import YOOMONEY_WALLET
+    label = f"topup_{user_id}_{amount}"
+    
+    payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={amount}&label={label}"
+    
+    return web.json_response({
+        'payment_url': payment_url,
+        'amount': amount
+    })
+
+
+async def pay_with_balance(request):
+    """Оплатить подписку с баланса"""
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
+    sub_id = request.query.get('sub_id')
+    
+    if not telegram_id or not sub_id:
+        return web.json_response({'error': 'telegram_id and sub_id required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+        sub_id = int(sub_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Получаем user_id и баланс
+    cursor.execute("SELECT id, balance FROM users WHERE telegram_id = ?", (telegram_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user_id, balance = row
+    
+    # Получаем подписку и цену
+    cursor.execute("SELECT price, is_paid FROM subscriptions WHERE id = ? AND user_id = ?", (sub_id, user_id))
+    sub_row = cursor.fetchone()
+    
+    if not sub_row:
+        conn.close()
+        return web.json_response({'error': 'subscription not found'}, status=404)
+    
+    price, is_paid = sub_row
+    
+    if is_paid:
+        conn.close()
+        return web.json_response({'error': 'already paid'}, status=400)
+    
+    if balance < price:
+        conn.close()
+        return web.json_response({'error': 'insufficient balance', 'required': price, 'available': balance}, status=400)
+    
+    # Списываем баланс
+    cursor.execute("UPDATE users SET balance = balance - ? WHERE id = ?", (price, user_id))
+    
+    # Активируем подписку
+    from datetime import datetime, timedelta
+    cursor.execute("UPDATE subscriptions SET is_paid = 1, status = 'active', paid_at = ? WHERE id = ?", 
+                   (datetime.now().isoformat(), sub_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({
+        'success': True,
+        'sub_id': sub_id,
+        'amount_paid': price,
+        'remaining_balance': balance - price
+    })
+
+
 def setup_api_routes(app):
     """Настроить API маршруты"""
     app.router.add_get('/api/user', get_user_data)
@@ -299,4 +409,6 @@ def setup_api_routes(app):
     app.router.add_post('/api/subscription/delete', delete_subscription)
     app.router.add_get('/api/subscription/renewal', get_renewal_options)
     app.router.add_get('/api/payments', get_user_payments)
+    app.router.add_get('/api/balance/topup', get_balance_topup)
+    app.router.add_post('/api/subscription/pay', pay_with_balance)
     logger.info("✅ API routes настроены")

@@ -49,7 +49,7 @@ async def cmd_start(message: Message):
         print(f"Error deleting: {e}")
     
     # Отправляем новое
-    await message.answer(text, reply_markup=get_main_keyboard(has_subscription, has_trial_used))
+    await message.answer(text, reply_markup=get_main_keyboard(has_subscription, has_trial_used, telegram_id))
 
 
 @router.callback_query(F.data == "back_to_main")
@@ -72,7 +72,7 @@ async def back_to_main(callback: CallbackQuery):
         text = f"👋 С возвращением, {first_name}!\n\n"
         text += "У вас есть доступ к кабинету."
     
-    await callback.message.edit_text(text, reply_markup=get_main_keyboard(has_subscription, has_trial_used))
+    await callback.message.edit_text(text, reply_markup=get_main_keyboard(has_subscription, has_trial_used, telegram_id))
     await callback.answer()
 
 
