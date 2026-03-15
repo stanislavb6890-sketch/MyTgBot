@@ -646,13 +646,13 @@
             <span class="icon">📱</span>
             <span>Подписки</span>
         </div>
+        <div class="nav-item" data-page="servers">
+            <span class="icon">🖥️</span>
+            <span>Серверы</span>
+        </div>
         <div class="nav-item" data-page="profile">
             <span class="icon">👤</span>
             <span>Профиль</span>
-        </div>
-        <div class="nav-item" data-page="payments">
-            <span class="icon">💳</span>
-            <span>Платежи</span>
         </div>
     </nav>
     
@@ -1131,6 +1131,8 @@
                     renderProfile();
                 } else if (page === 'payments') {
                     renderPayments();
+                } else if (page === 'servers') {
+                    renderServers();
                 }
             });
         });
@@ -1270,6 +1272,64 @@
             }).catch(() => {
                 tg.showAlert('📤 Ваша ссылка:\n\n' + link);
             });
+        }
+        
+        async function renderServers() {
+            const content = document.getElementById('content');
+            showLoading();
+            
+            let telegramId = null;
+            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                telegramId = tg.initDataUnsafe.user.id;
+            }
+            if (!telegramId) {
+                const params = new URLSearchParams(window.location.search);
+                telegramId = params.get('user_id') || params.get('telegram_id');
+            }
+            
+            try {
+                // Получаем данные пользователя и подписки
+                const userResp = await fetch(`${API_BASE}/api/user?user_id=${telegramId}`);
+                const userData = await userResp.json();
+                
+                const subs = userData.subscriptions || [];
+                const activeSub = subs.find(s => s.status === 'active');
+                
+                let html = `
+                    <div class="section-title">🖥️ Доступные серверы</div>
+                `;
+                
+                if (activeSub && activeSub.servers_list) {
+                    const servers = activeSub.servers_list.split(', ');
+                    html += `
+                        <div class="subscription-card" style="margin-bottom: 12px; background: linear-gradient(135deg, var(--accent-muted), var(--bg-card));">
+                            <div style="text-align: center; margin-bottom: 8px;">
+                                <div style="color: var(--accent); font-weight: 600;">✅ VPN АКТИВЕН</div>
+                            </div>
+                            ${servers.map(s => `
+                                <div style="padding: 8px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
+                                    <span style="color: var(--text-primary);">${s}</span>
+                                </div>
+                            `).join('')}
+                            <button class="btn btn-secondary" onclick="getSubscriptionLink(${activeSub.id})" style="margin-top: 8px;">
+                                📋 Получить ссылку
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="empty-state">
+                            <div class="icon">🖥️</div>
+                            <h3>Нет активной подписки</h3>
+                            <p>Создайте подписку для получения доступа к серверам</p>
+                        </div>
+                    `;
+                }
+                
+                content.innerHTML = html;
+            } catch (e) {
+                content.innerHTML = '<div class="empty-state"><p>Ошибка загрузки</p></div>';
+            }
         }
         
         async function renderPayments() {
