@@ -591,10 +591,6 @@
             <span class="icon">📱</span>
             <span>Подписки</span>
         </div>
-        <div class="nav-item" data-page="create">
-            <span class="icon">➕</span>
-            <span>Создать</span>
-        </div>
         <div class="nav-item" data-page="profile">
             <span class="icon">👤</span>
             <span>Профиль</span>
@@ -687,7 +683,7 @@
                         <div class="icon">📭</div>
                         <h3>Нет подписок</h3>
                         <p>Создайте подписку в боте</p>
-                        <button class="btn btn-primary" onclick="closeApp()">Открыть бота</button>
+                        <button class="btn btn-primary" onclick="createData.step = 1; renderCreateTariff();">➕ Создать подписку</button>
                     </div>
                 `;
                 return;

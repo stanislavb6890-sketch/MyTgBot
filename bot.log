@@ -231,3 +231,70 @@ INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:19:52 +0000] "GET /api/user?telegr
 INFO:aiohttp.access:204.76.203.18 [15/Mar/2026:10:19:57 +0000] "GET /backup/ HTTP/1.1" 404 174 "-" "-"
 INFO:aiohttp.access:157.245.77.56 [15/Mar/2026:10:37:06 +0000] "UNKNOWN / HTTP/1.0" 400 218 "-" "-"
 INFO:aiohttp.access:157.245.77.56 [15/Mar/2026:10:37:06 +0000] "GET / HTTP/1.1" 404 174 "-" "HTTP Banner Detection (https://security.ipip.net)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:38:29 +0000] "GET /miniapp HTTP/1.0" 200 53557 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:38:29 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 364 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:38:37 +0000] "GET /miniapp HTTP/1.0" 200 53557 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:38:37 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 364 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:39:26 +0000] "GET /miniapp HTTP/1.0" 200 53557 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:39:26 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 364 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:40:30 +0000] "GET /miniapp HTTP/1.0" 200 53557 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:40:30 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 364 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:40:43 +0000] "GET /miniapp HTTP/1.0" 200 53557 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:40:43 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 364 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:204.76.203.30 [15/Mar/2026:10:48:19 +0000] "GET /json/ HTTP/1.1" 404 174 "-" "Go-http-client/1.1"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:51:19 +0000] "GET /miniapp HTTP/1.0" 200 53454 "-" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:51:19 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 364 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiogram.event:Update id=406095039 is handled. Duration 50 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095040 is handled. Duration 63 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095041 is handled. Duration 53 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095042 is handled. Duration 75 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095043 is handled. Duration 59 ms by bot id=8287902513
+INFO:httpx:HTTP Request: GET https://pal.goodred.pro/api/internal-squads "HTTP/1.1 200 OK"
+INFO:aiogram.event:Update id=406095044 is handled. Duration 348 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095045 is handled. Duration 181 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095046 is handled. Duration 57 ms by bot id=8287902513
+INFO:httpx:HTTP Request: POST https://pal.goodred.pro/api/users "HTTP/1.1 201 Created"
+INFO:aiogram.event:Update id=406095047 is handled. Duration 275 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095048 is handled. Duration 56 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095049 is handled. Duration 35 ms by bot id=8287902513
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:51:52 +0000] "GET /miniapp HTTP/1.0" 200 53454 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:51:52 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 610 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiogram.event:Update id=406095050 is handled. Duration 218 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095051 is handled. Duration 48 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095052 is handled. Duration 78 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095053 is handled. Duration 49 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095054 is handled. Duration 59 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095055 is handled. Duration 53 ms by bot id=8287902513
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:52:41 +0000] "GET /miniapp HTTP/1.0" 200 53454 "-" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:52:41 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 610 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:52:52 +0000] "GET /api/subscription/payment?sub_id=39 HTTP/1.0" 200 326 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:53:05 +0000] "GET /miniapp HTTP/1.0" 200 53454 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:53:05 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 610 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:httpx:HTTP Request: DELETE https://pal.goodred.pro/api/users/74135fcf-945f-443c-bed8-608f8be21a96 "HTTP/1.1 200 OK"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:53:10 +0000] "POST /api/subscription/delete HTTP/1.0" 200 190 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:53:10 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 364 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiogram.event:Update id=406095056 is handled. Duration 76 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095057 is handled. Duration 53 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095058 is handled. Duration 36 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095059 is handled. Duration 43 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095060 is handled. Duration 67 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095061 is handled. Duration 234 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095062 is handled. Duration 241 ms by bot id=8287902513
+INFO:httpx:HTTP Request: GET https://pal.goodred.pro/api/internal-squads "HTTP/1.1 200 OK"
+INFO:aiogram.event:Update id=406095063 is handled. Duration 254 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095064 is handled. Duration 22 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095065 is handled. Duration 27 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095066 is handled. Duration 54 ms by bot id=8287902513
+INFO:httpx:HTTP Request: POST https://pal.goodred.pro/api/users "HTTP/1.1 201 Created"
+INFO:aiogram.event:Update id=406095067 is handled. Duration 261 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095068 is handled. Duration 90 ms by bot id=8287902513
+INFO:aiogram.event:Update id=406095069 is handled. Duration 39 ms by bot id=8287902513
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:53:51 +0000] "GET /miniapp HTTP/1.0" 200 53454 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:53:51 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 625 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:53:58 +0000] "GET /api/subscription/payment?sub_id=40 HTTP/1.0" 200 326 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:54:13 +0000] "GET /miniapp HTTP/1.0" 200 53454 "-" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:54:13 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 625 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiogram.event:Update id=406095070 is handled. Duration 47 ms by bot id=8287902513
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:54:43 +0000] "GET /api/subscription/payment?sub_id=40 HTTP/1.0" 200 326 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:55:11 +0000] "GET /miniapp HTTP/1.0" 200 53454 "-" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
+INFO:aiohttp.access:127.0.0.1 [15/Mar/2026:10:55:11 +0000] "GET /api/user?telegram_id=2056591682 HTTP/1.0" 200 625 "https://test.cloaknet.site/miniapp" "Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.159 Mobile Safari/537.36 Telegram-Android/12.5.1 (Tecno TECNO CM7; Android 15; SDK 35; HIGH)"
