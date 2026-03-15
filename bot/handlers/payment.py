@@ -46,7 +46,38 @@ async def yoomoney_webhook(request):
                     
                     conn = get_db_connection()
                     cursor = conn.cursor()
+                    
+                    # Начисляем баланс
                     cursor.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
+                    
+                    # Начисляем реферальные бонусы
+                    cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (user_id,))
+                    referrer_row = cursor.fetchone()
+                    
+                    if referrer_row and referrer_row[0]:
+                        referrer_id = referrer_row[0]
+                        
+                        # Уровень 1: 5%
+                        bonus_level1 = amount * 0.05
+                        cursor.execute("UPDATE users SET referral_bonus = referral_bonus + ?, balance = balance + ? WHERE id = ?", 
+                                    (bonus_level1, bonus_level1, referrer_id))
+                        
+                        # Уровень 2: 3%
+                        cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (referrer_id,))
+                        level2_row = cursor.fetchone()
+                        if level2_row and level2_row[0]:
+                            bonus_level2 = amount * 0.03
+                            cursor.execute("UPDATE users SET referral_bonus = referral_bonus + ?, balance = balance + ? WHERE id = ?",
+                                        (bonus_level2, bonus_level2, level2_row[0]))
+                            
+                            # Уровень 3: 1%
+                            cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (level2_row[0],))
+                            level3_row = cursor.fetchone()
+                            if level3_row and level3_row[0]:
+                                bonus_level3 = amount * 0.01
+                                cursor.execute("UPDATE users SET referral_bonus = referral_bonus + ?, balance = balance + ? WHERE id = ?",
+                                            (bonus_level3, bonus_level3, level3_row[0]))
+                    
                     conn.commit()
                     conn.close()
                     

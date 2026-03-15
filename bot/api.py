@@ -395,6 +395,34 @@ async def pay_with_balance(request):
     cursor.execute("UPDATE subscriptions SET is_paid = 1, status = 'active', paid_at = ? WHERE id = ?", 
                    (datetime.now().isoformat(), sub_id))
     
+    # Начисляем реферальные бонусы
+    cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (user_id,))
+    referrer_row = cursor.fetchone()
+    
+    if referrer_row and referrer_row[0]:
+        referrer_id = referrer_row[0]
+        
+        # Уровень 1: 5%
+        bonus_level1 = price * 0.05
+        cursor.execute("UPDATE users SET referral_bonus = referral_bonus + ?, balance = balance + ? WHERE id = ?", 
+                    (bonus_level1, bonus_level1, referrer_id))
+        
+        # Уровень 2: 3%
+        cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (referrer_id,))
+        level2_row = cursor.fetchone()
+        if level2_row and level2_row[0]:
+            bonus_level2 = price * 0.03
+            cursor.execute("UPDATE users SET referral_bonus = referral_bonus + ?, balance = balance + ? WHERE id = ?",
+                        (bonus_level2, bonus_level2, level2_row[0]))
+            
+            # Уровень 3: 1%
+            cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (level2_row[0],))
+            level3_row = cursor.fetchone()
+            if level3_row and level3_row[0]:
+                bonus_level3 = price * 0.01
+                cursor.execute("UPDATE users SET referral_bonus = referral_bonus + ?, balance = balance + ? WHERE id = ?",
+                            (bonus_level3, bonus_level3, level3_row[0]))
+    
     conn.commit()
     conn.close()
     
@@ -469,6 +497,113 @@ async def notify_payment(request):
     return web.json_response({'success': True})
 
 
+# === Реферальная система ===
+async def get_referral_info(request):
+    """Получить информацию о рефералах"""
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
+    
+    if not telegram_id:
+        return web.json_response({'error': 'telegram_id required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid telegram_id'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Получаем данные пользователя
+    cursor.execute("""
+        SELECT id, referral_code, referral_bonus
+        FROM users WHERE telegram_id = ?
+    """, (telegram_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user_id, referral_code, referral_bonus = row
+    
+    # Получаем количество рефералов
+    cursor.execute("SELECT COUNT(*) FROM users WHERE referrer_id = ?", (user_id,))
+    referral_count = cursor.fetchone()[0]
+    
+    # Получаем список рефералов (уровень 1)
+    cursor.execute("""
+        SELECT u.telegram_id, u.username, u.first_name, u.referral_bonus, u.created_at
+        FROM users u WHERE u.referrer_id = ?
+        ORDER BY u.created_at DESC LIMIT 20
+    """, (user_id,))
+    referrals = []
+    for r in cursor.fetchall():
+        referrals.append({
+            'telegram_id': r[0],
+            'username': r[1],
+            'first_name': r[2],
+            'bonus': r[3],
+            'joined_at': r[4]
+        })
+    
+    conn.close()
+    
+    return web.json_response({
+        'referral_code': referral_code,
+        'referral_bonus': referral_bonus,
+        'referral_count': referral_count,
+        'referrals': referrals
+    })
+
+
+async def register_referral(request):
+    """Зарегистрировать реферала (при переходе по ссылке)"""
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
+    referral_code = request.query.get('referral_code')
+    
+    if not telegram_id or not referral_code:
+        return web.json_response({'error': 'telegram_id and referral_code required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid telegram_id'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Проверяем реферальный код
+    cursor.execute("SELECT id FROM users WHERE referral_code = ?", (referral_code,))
+    referrer_row = cursor.fetchone()
+    
+    if not referrer_row:
+        conn.close()
+        return web.json_response({'error': 'invalid referral code'}, status=404)
+    
+    referrer_id = referrer_row[0]
+    
+    # Проверяем что пользователь ещё не имеет реферала
+    cursor.execute("SELECT referrer_id, telegram_id FROM users WHERE telegram_id = ?", (telegram_id,))
+    user_row = cursor.fetchone()
+    
+    if not user_row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    if user_row[0]:
+        conn.close()
+        return web.json_response({'message': 'already has referrer'})
+    
+    # Регистрируем реферала
+    cursor.execute("UPDATE users SET referrer_id = ? WHERE telegram_id = ?", (referrer_id, telegram_id))
+    conn.commit()
+    conn.close()
+    
+    logger.info(f"✅ Реферал зарегистрирован: {telegram_id} -> {referrer_id}")
+    
+    return web.json_response({'success': True})
+
+
 def setup_api_routes(app):
     """Настроить API маршруты"""
     app.router.add_get('/api/user', get_user_data)
@@ -480,4 +615,7 @@ def setup_api_routes(app):
     app.router.add_get('/api/balance/topup', get_balance_topup)
     app.router.add_post('/api/subscription/pay', pay_with_balance)
     app.router.add_post('/api/notify/payment', notify_payment)
+    # Реферальная система
+    app.router.add_get('/api/referral', get_referral_info)
+    app.router.add_post('/api/referral/register', register_referral)
     logger.info("✅ API routes настроены")

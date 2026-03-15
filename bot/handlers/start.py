@@ -2,8 +2,9 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from bot.keyboards import get_main_keyboard
-from bot.utils.database import get_or_create_user, get_user_subscriptions, user_has_trial
+from bot.utils.database import get_or_create_user, get_user_subscriptions, user_has_trial, get_db_connection
 from config import ADMIN_ID
+import re
 
 router = Router()
 
@@ -15,8 +16,35 @@ async def cmd_start(message: Message):
     username = message.from_user.username
     first_name = message.from_user.first_name or "друг"
     
+    # Проверяем реферальный код
+    text = message.text
+    referrer_code = None
+    if text and text.startswith("/start "):
+        referrer_code = text.replace("/start ", "").strip()
+    
     # Создаём/получаем пользователя
     user_id = get_or_create_user(telegram_id, username, first_name)
+    
+    # Если есть реферальный код и пользователь новый - регистрируем
+    if referrer_code:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Проверяем что пользователь ещё не имеет реферала
+        cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        
+        if row and row[0] is None:
+            # Ищем реферера по коду
+            cursor.execute("SELECT id FROM users WHERE referral_code = ?", (referrer_code,))
+            referrer_row = cursor.fetchone()
+            
+            if referrer_row:
+                cursor.execute("UPDATE users SET referrer_id = ? WHERE id = ?", (referrer_row[0], user_id))
+                conn.commit()
+                print(f"✅ Реферал зарегистрирован: {telegram_id} -> {referrer_row[0]}")
+        
+        conn.close()
     
     # Проверяем подписки
     subs = get_user_subscriptions(user_id)
