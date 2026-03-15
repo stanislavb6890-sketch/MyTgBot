@@ -385,6 +385,11 @@ async def pay_with_balance(request):
     # Списываем баланс
     cursor.execute("UPDATE users SET balance = balance - ? WHERE id = ?", (price, user_id))
     
+    # Получаем UUID для активации VPN
+    cursor.execute("SELECT remnawave_uuid FROM subscriptions WHERE id = ?", (sub_id,))
+    uuid_row = cursor.fetchone()
+    uuid = uuid_row[0] if uuid_row else None
+    
     # Активируем подписку
     from datetime import datetime, timedelta
     cursor.execute("UPDATE subscriptions SET is_paid = 1, status = 'active', paid_at = ? WHERE id = ?", 
@@ -393,12 +398,75 @@ async def pay_with_balance(request):
     conn.commit()
     conn.close()
     
+    # Активируем VPN в панели
+    if uuid:
+        try:
+            # Используем синхронный подход для aiohttp
+            import subprocess
+            result = subprocess.run(
+                ['python3', '-c', f'''
+import asyncio
+from bot.utils.remnawave import enable_vpn_user
+asyncio.run(enable_vpn_user("{uuid}"))
+'''],
+                capture_output=True,
+                text=True,
+                cwd='/root/.openclaw/workspace/vpn-bot'
+            )
+            if result.returncode == 0:
+                logger.info(f"✅ VPN активирован: {uuid}")
+            else:
+                logger.error(f"Ошибка активации: {result.stderr}")
+        except Exception as e:
+            logger.error(f"Ошибка активации VPN: {e}")
+    
     return web.json_response({
         'success': True,
         'sub_id': sub_id,
         'amount_paid': price,
         'remaining_balance': balance - price
     })
+
+
+async def notify_payment(request):
+    """Отправить уведомление об оплате"""
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
+    sub_id = request.query.get('sub_id')
+    
+    if not telegram_id or not sub_id:
+        return web.json_response({'error': 'telegram_id and sub_id required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+        sub_id = int(sub_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    # Получаем данные подписки
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT price FROM subscriptions WHERE id = ?", (sub_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if not row:
+        return web.json_response({'error': 'subscription not found'}, status=404)
+    
+    price = row[0]
+    
+    # Отправляем уведомление через бота
+    try:
+        from bot.main import bot
+        await bot.send_message(
+            telegram_id,
+            f"✅ <b>Подписка оплачена!</b>\n\n"
+            f"💰 Списано: {price}₽\n\n"
+            f"Можете использовать VPN!"
+        )
+    except Exception as e:
+        logger.error(f"Ошибка отправки уведомления: {e}")
+    
+    return web.json_response({'success': True})
 
 
 def setup_api_routes(app):
@@ -411,4 +479,5 @@ def setup_api_routes(app):
     app.router.add_get('/api/payments', get_user_payments)
     app.router.add_get('/api/balance/topup', get_balance_topup)
     app.router.add_post('/api/subscription/pay', pay_with_balance)
+    app.router.add_post('/api/notify/payment', notify_payment)
     logger.info("✅ API routes настроены")

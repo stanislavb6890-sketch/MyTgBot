@@ -29,7 +29,7 @@ async def my_subscriptions(callback: CallbackQuery):
         return
 
     # Показываем только 1 неоплаченную подписку
-    unpaid_subs = [s for s in subs if not s[12]]  # is_paid = False
+    unpaid_subs = [s for s in subs if not s[13]]  # is_paid = False
     
     text = f"📱 КАБИНЕТ - {first_name}\n\n"
     text += f"📊 Всего подписок: {len(subs)}\n"
@@ -254,7 +254,7 @@ async def pay_unpaid(callback: CallbackQuery):
     subs = get_user_subscriptions(user_id)
     
     # Находим неоплаченную
-    unpaid = next((s for s in subs if not s[12]), None)
+    unpaid = next((s for s in subs if not s[13]), None)
     
     if not unpaid:
         await callback.message.edit_text("Нет неоплаченных подписок", reply_markup=get_cabinet_keyboard())
@@ -285,7 +285,7 @@ async def delete_unpaid(callback: CallbackQuery):
     subs = get_user_subscriptions(user_id)
     
     # Находим неоплаченную
-    unpaid = next((s for s in subs if not s[12]), None)
+    unpaid = next((s for s in subs if not s[13]), None)
     
     if not unpaid:
         await callback.message.edit_text("Нет неоплаченных подписок", reply_markup=get_cabinet_keyboard())

@@ -146,20 +146,20 @@
         }
         
         .sub-status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 11px;
             font-weight: 600;
-            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
         
         .sub-status.active {
-            background: rgba(0, 212, 170, 0.2);
-            color: var(--success);
+            background: rgba(34, 211, 238, 0.15);
+            color: var(--accent);
         }
         
         .sub-status.inactive {
-            background: rgba(255, 107, 107, 0.2);
+            background: rgba(248, 113, 113, 0.15);
             color: var(--danger);
         }
         
@@ -525,26 +525,41 @@
         
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: var(--text-secondary);
+            padding: 48px 20px;
+            color: var(--text-muted);
         }
         
         .empty-state .icon {
-            font-size: 64px;
+            font-size: 48px;
             margin-bottom: 16px;
+            opacity: 0.7;
+        }
+        
+        .empty-state h3 {
+            color: var(--text-secondary);
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        
+        .empty-state p {
+            font-size: 14px;
+            margin-bottom: 20px;
         }
         
         .traffic-bar {
             background: var(--bg-secondary);
-            border-radius: 8px;
-            height: 8px;
-            margin-top: 16px;
+            border-radius: 6px;
+            height: 6px;
+            margin-top: 12px;
             overflow: hidden;
         }
         
         .traffic-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--accent), #00b894);
+            background: var(--accent);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
             border-radius: 8px;
             transition: width 0.5s ease;
         }
@@ -566,30 +581,40 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: var(--bg-secondary);
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             display: flex;
             justify-content: space-around;
-            padding: 12px 0;
-            border-top: 1px solid #333;
+            padding: 10px 0 20px;
+            border-top: 1px solid var(--border);
+            z-index: 1000;
         }
         
         .nav-item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 10px;
             gap: 4px;
             cursor: pointer;
-            transition: color 0.2s;
+            transition: all 0.2s ease;
+            padding: 8px 16px;
+            border-radius: 10px;
+        }
+        
+        .nav-item:active {
+            transform: scale(0.95);
         }
         
         .nav-item.active {
             color: var(--accent);
+            background: rgba(34, 211, 238, 0.1);
         }
         
         .nav-item .icon {
-            font-size: 20px;
+            font-size: 22px;
         }
         
         .hidden {
@@ -747,6 +772,8 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
+                        // Отправляем уведомление
+                        fetch(`${API_BASE}/api/notify/payment?user_id=${telegramId}&sub_id=${subId}`, { method: 'POST' });
                         alert('✅ Подписка оплачена! Остаток: ' + data.remaining_balance.toFixed(2) + '₽');
                         loadData();
                     } else {
@@ -862,7 +889,40 @@
                 `;
             });
             
+            // Кнопка создать подписку - только если все подписки оплачены
+            const hasUnpaid = subscriptions.some(s => !s.is_paid);
+            
+            if (!hasUnpaid) {
+                html += `<button class="btn btn-primary" onclick="createData.step = 1; renderCreateTariff();" style="margin-top: 16px;">➕ Создать новую подписку</button>`;
+            } else {
+                html += `<div style="margin-top: 16px; padding: 12px; background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 10px; text-align: center;">
+                    ⚠️ <b>Неоплаченная подписка</b><br>
+                    <span style="color: var(--text-muted); font-size: 13px;">Оплатите или удалится через 24ч</span>
+                </div>`;
+            }
+            
             content.innerHTML = html;
+        }
+        
+        async function getSubscriptionLink(subId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/subscription/links?sub_id=${subId}`);
+                const data = await response.json();
+                
+                if (data.subscription_url) {
+                    const link = data.subscription_url;
+                    // Копируем в буфер обмена
+                    navigator.clipboard.writeText(link).then(() => {
+                        tg.showAlert('✅ Ссылка скопирована!\n\n' + link);
+                    }).catch(() => {
+                        tg.showAlert('📋 Ссылка:\n\n' + link);
+                    });
+                } else {
+                    tg.showAlert('❌ Нет доступных ссылок');
+                }
+            } catch (e) {
+                tg.showAlert('❌ Ошибка: ' + e.message);
+            }
         }
         
         async function getPaymentUrl(subId) {

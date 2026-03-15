@@ -479,6 +479,13 @@ async def confirm_payment(callback: CallbackQuery, state: FSMContext):
             if node_info:
                 add_subscription_server(sub_id, server_uuid, node_info["name"], node_info.get("country_code"))
         
+        # Добавляем пользователя в сквады
+        try:
+            if data["servers"]:
+                await add_user_to_squads(vpn_user["uuid"], data["servers"])
+        except Exception as e:
+            print(f"Ошибка добавления в сквады: {e}")
+        
         # Сохраняем ID подписки
         user_data[telegram_id]["subscription_id"] = sub_id
         user_data[telegram_id]["vpn_uuid"] = vpn_user["uuid"]
