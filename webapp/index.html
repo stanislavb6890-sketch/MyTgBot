@@ -1182,6 +1182,12 @@
                         <div class="label">Покупок</div>
                         <div class="value">${purchases}</div>
                     </div>
+                    ${userData?.has_trial ? `
+                    <div class="stat-card" style="border-color: var(--accent);">
+                        <div class="label">🎁 TRIAL</div>
+                        <div class="value" style="color: var(--accent);">Доступен</div>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 <div class="section-title">🎁 Реферальная программа</div>

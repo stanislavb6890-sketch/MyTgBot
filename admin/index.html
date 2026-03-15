@@ -163,12 +163,12 @@
     <div class="tabs">
         <div class="tab active" onclick="switchTab('users')">👥 Пользователи</div>
         <div class="tab" onclick="switchTab('subscriptions')">📱 Подписки</div>
-        <div class="tab" onclick="switchTab('payments')">💳 Платежи</div>
+        <div class="tab" onclick="switchTab('balance')">💰 Баланс</div>
     </div>
     
     <div id="users" class="tab-content active"></div>
     <div id="subscriptions" class="tab-content"></div>
-    <div id="payments" class="tab-content"></div>
+    <div id="balance" class="tab-content"></div>
     
     <button class="refresh-btn" onclick="loadAll()">🔄</button>
     
@@ -317,8 +317,55 @@
             document.getElementById(tab).classList.add('active');
         }
         
+        async function loadBalance() {
+            const resp = await fetch(`${API}/api/admin/users?key=${ADMIN_KEY}`);
+            const data = await resp.json();
+            
+            if (!data.users || data.users.length === 0) {
+                document.getElementById('balance').innerHTML = '<p style="color: var(--text-secondary);">Нет пользователей</p>';
+                return;
+            }
+            
+            document.getElementById('balance').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Пользователь</th>
+                            <th>Текущий баланс</th>
+                            <th>Бонус реф.</th>
+                            <th>Изменить</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.users.map(u => `
+                            <tr>
+                                <td>${u.id}</td>
+                                <td>${u.first_name || '-'} ${u.username ? '@' + u.username : ''}</td>
+                                <td style="color: var(--accent); font-weight: bold;">${u.balance?.toFixed(0) || 0}₽</td>
+                                <td>${u.referral_bonus?.toFixed(0) || 0}₽</td>
+                                <td>
+                                    <button class="btn" style="background: var(--accent); color: #000; padding: 6px 12px;" onclick="addBalance(${u.id}, ${u.telegram_id})">+ Добавить</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        async function addBalance(userId, telegramId) {
+            const amount = prompt('Введите сумму для добавления:', '100');
+            if (!amount || isNaN(amount)) return;
+            
+            if (!confirm(`Добавить ${amount}₽ пользователю ${telegramId}?`)) return;
+            
+            // Просто показываем - нужен API для этого
+            alert('Функция в разработке. Используйте SQLite для изменения баланса.');
+        }
+        
         async function loadAll() {
-            await Promise.all([loadStats(), loadUsers(), loadSubscriptions(), loadPayments()]);
+            await Promise.all([loadStats(), loadUsers(), loadSubscriptions(), loadBalance()]);
         }
         
         loadAll();
