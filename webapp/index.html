@@ -8,23 +8,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0d0d0d;
-            --bg-secondary: #1a1a1a;
-            --bg-card: #242424;
-            --accent: #00d4aa;
-            --accent-hover: #00b894;
-            --text-primary: #ffffff;
-            --text-secondary: #888888;
-            --danger: #ff6b6b;
-            --success: #00d4aa;
-            --warning: #ffd93d;
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1c1c1c;
+            --accent: #22d3ee;
+            --accent-hover: #06b6d4;
+            --accent-muted: #164e63;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --danger: #f87171;
+            --success: #22d3ee;
+            --warning: #fbbf24;
+            --border: #27272a;
+            --radius: 12px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.4);
         }
         
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
         }
         
         body {
@@ -36,17 +41,17 @@
         
         .header {
             background: var(--bg-secondary);
-            padding: 20px;
+            padding: 16px 20px;
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid var(--border);
         }
         
         .header h1 {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), #00b894);
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -64,46 +69,49 @@
         
         .stat-card {
             background: var(--bg-card);
-            border-radius: 16px;
-            padding: 16px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
         }
         
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 212, 170, 0.1);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+            border-color: var(--accent-muted);
         }
         
         .stat-card .label {
-            color: var(--text-secondary);
-            font-size: 12px;
+            color: var(--text-muted);
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
         }
         
         .stat-card .value {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             color: var(--accent);
         }
         
         .section-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
-            margin: 24px 0 16px;
+            margin: 20px 0 12px;
             display: flex;
             align-items: center;
             gap: 8px;
+            color: var(--text-secondary);
         }
         
         .subscription-card {
             background: var(--bg-card);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid #333;
-            transition: all 0.3s ease;
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
         }
@@ -180,35 +188,49 @@
         
         .btn {
             width: 100%;
-            padding: 16px;
+            padding: 14px;
             border: none;
-            border-radius: 14px;
-            font-size: 16px;
+            border-radius: 10px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 16px;
+            transition: all 0.15s ease;
+            margin-top: 12px;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent), #00b894);
+            background: var(--accent);
             color: #000;
         }
         
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 212, 170, 0.3);
+            background: var(--accent-hover);
+            box-shadow: 0 4px 20px rgba(34, 211, 238, 0.25);
         }
         
         .btn-secondary {
             background: var(--bg-secondary);
             color: var(--text-primary);
-            border: 1px solid #333;
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            border-color: var(--text-muted);
         }
         
         .btn-danger {
-            background: rgba(255, 107, 107, 0.2);
+            background: rgba(248, 113, 113, 0.15);
             color: var(--danger);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+        
+        .btn-danger:hover {
+            background: rgba(248, 113, 113, 0.25);
         }
         
         .loading {
