@@ -1,114 +1,148 @@
-"""Уведомления об окончании подписки"""
+"""Уведомления в Telegram"""
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import List
-
-from aiogram import Bot
-from bot.utils.database import get_db
 
 logger = logging.getLogger(__name__)
 
-# За сколько дней до истечения отправлять уведомления
-NOTIFICATION_DAYS = [1, 3, 7]
+
+def get_bot_token():
+    """Получить токен бота из config"""
+    try:
+        from config import BOT_TOKEN
+        return BOT_TOKEN
+    except:
+        return None
 
 
-async def check_expiring_subscriptions(bot: Bot) -> int:
-    """Проверить истекающие подписки и отправить уведомления"""
-    conn = get_db()
-    cursor = conn.cursor()
+async def send_telegram_message(chat_id: int, text: str, parse_mode: str = "Markdown"):
+    """Отправить сообщение в Telegram"""
+    token = get_bot_token()
+    if not token:
+        logger.error("TELEGRAM_BOT_TOKEN не настроен")
+        return False
     
-    sent_count = 0
-    now = datetime.now()
+    import aiohttp
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
     
-    for days in NOTIFICATION_DAYS:
-        # Находим подписки, истекающие через указанное количество дней
-        target_date = now + timedelta(days=days)
-        target_date_start = target_date.replace(hour=0, minute=0, second=0)
-        target_date_end = target_date.replace(hour=23, minute=59, second=59)
-        
-        cursor.execute("""
-            SELECT s.id, s.user_id, s.expires_at, s.username, u.telegram_id, u.first_name
-            FROM subscriptions s
-            JOIN users u ON s.user_id = u.id
-            WHERE s.status = 'active' 
-            AND s.expires_at >= ?
-            AND s.expires_at <= ?
-        """, (target_date_start.isoformat(), target_date_end.isoformat()))
-        
-        subscriptions = cursor.fetchall()
-        
-        for sub in subscriptions:
-            sub_id, user_id, expires_at, username, telegram_id, first_name = sub
-            
-            # Проверяем, не отправляли ли уже уведомление
-            cursor.execute("""
-                SELECT id FROM notification_log 
-                WHERE user_id = ? AND days_before = ? AND sent_date = date('now')
-            """, (user_id, days))
-            
-            if cursor.fetchone():
-                logger.info(f"Уведомление для user_id={user_id} за {days} дней уже отправлено")
-                continue
-            
-            # Отправляем уведомление
-            try:
-                message = get_notification_message(days, first_name or username or "пользователь")
-                await bot.send_message(telegram_id, message)
-                
-                # Логируем отправку
-                cursor.execute("""
-                    INSERT INTO notification_log (user_id, days_before, sent_at)
-                    VALUES (?, ?, datetime('now'))
-                """, (user_id, days))
-                conn.commit()
-                
-                sent_count += 1
-                logger.info(f"✅ Отправлено уведомление user_id={user_id} за {days} дней до истечения")
-                
-            except Exception as e:
-                logger.error(f"❌ Ошибка отправки user_id={user_id}: {e}")
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": parse_mode
+    }
     
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                if response.status == 200:
+                    logger.info(f"Уведомление отправлено пользователю {chat_id}")
+                    return True
+                else:
+                    logger.error(f"Ошибка отправки: {response.status}")
+                    return False
+    except Exception as e:
+        logger.error(f"Исключение при отправке: {e}")
+        return False
+
+
+async def notify_payment_success(telegram_id: int, subscription_data: dict, remaining_balance: float):
+    """Уведомление об успешной оплате подписки"""
+    sub = subscription_data
+    
+    text = f"""✅ *Подписка оплачена!*
+
+📋 *Детали:*
+• ID: #{sub.get('id', 'N/A')}
+• Статус: Активирована
+• Истекает: {sub.get('expires_at', 'N/A')[:10]}
+• Трафик: {sub.get('traffic_limit', 0)} GB
+• Устройства: {sub.get('devices', 1)}
+
+💰 *Баланс:* {remaining_balance} ₽
+
+📱 Скопируйте ссылку в разделе 'Подписки' для настройки VPN"""
+    
+    return await send_telegram_message(telegram_id, text)
+
+
+async def notify_trial_activated(telegram_id: int):
+    """Уведомление об активации триала"""
+    text = """🎉 *Тестовый период активирован!*
+
+📋 *Детали:*
+• Срок: 3 дня
+• Трафик: 5 GB
+• Устройства: 1
+
+📱 Получите ссылку в разделе 'Подписки' для настройки VPN"""
+    
+    return await send_telegram_message(telegram_id, text)
+
+
+async def notify_balance_topup(telegram_id: int, amount: float, new_balance: float):
+    """Уведомление о пополнении баланса"""
+    text = f"""💰 *Баланс пополнен!*
+
+• Сумма: +{amount} ₽
+• Новый баланс: {new_balance} ₽"""
+    
+    return await send_telegram_message(telegram_id, text)
+
+
+async def notify_new_referral(telegram_id: int, referrer_name: str, bonus: float):
+    """Уведомление о новом рефале"""
+    text = f"""👥 *Новый реферал!*
+
+@{referrer_name} присоединился по вашей ссылке
+
+🎁 *Бонус:* +{bonus} ₽"""
+    
+    return await send_telegram_message(telegram_id, text)
+
+
+async def notify_subscription_expiring(telegram_id: int, days_left: int, sub_id: int):
+    """Уведомление об истечении подписки"""
+    text = f"""⏰ *Подписка истекает!*
+
+До окончания подписки #{sub_id} осталось *{days_left} дней*
+
+Продлите подписку, чтобы не потерять доступ к VPN"""
+    
+    return await send_telegram_message(telegram_id, text)
+
+
+async def check_expiring_subscriptions():
+    """Проверить подписки, которые истекают через N дней (для крона)"""
+    import sqlite3
+    from datetime import datetime, timedelta
+    
+    conn = sqlite3.connect('vpn_bot.db')
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    # Подписки, которые истекают через 3 дня
+    check_date = datetime.now() + timedelta(days=3)
+    
+    c.execute("""
+        SELECT s.id, s.user_id, s.expires_at, u.telegram_id
+        FROM subscriptions s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.status = 'active' 
+        AND date(s.expires_at) = date(?)
+    """, (check_date.strftime('%Y-%m-%d'),))
+    
+    expiring = c.fetchall()
     conn.close()
-    return sent_count
-
-
-def get_notification_message(days: int, name: str) -> str:
-    """Получить текст уведомления"""
-    if days == 1:
-        return f"""⏰ Привет, {name}!
-
-Твоя подписка истекает уже завтра! 
-
-Не забудь продлить, чтобы не остаться без интернета. Если нужна помощь — просто напиши боту."""
-    elif days == 3:
-        return f"""📅 Привет, {name}!
-
-Твоя подписка истекает через 3 дня.
-
-У тебя есть время продлить её со скидкой. Если что — пиши, помогу!"""
-    else:  # 7 days
-        return f"""📆 Привет, {name}!
-
-Напоминаю: подписка истекает через неделю.
-
-Если планируешь продлить — самое время. Возникли вопросы? Я на связи!"""
-
-
-def init_notification_db():
-    """Создать таблицу для логирования уведомлений"""
-    conn = get_db()
-    cursor = conn.cursor()
     
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS notification_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            days_before INTEGER NOT NULL,
-            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    sent = 0
+    for sub in expiring:
+        days_left = 3
+        success = await notify_subscription_expiring(sub['telegram_id'], days_left, sub['id'])
+        if success:
+            sent += 1
     
-    conn.commit()
-    conn.close()
-    logger.info("✅ Таблица notification_log создана")
+    return sent
+
+
+if __name__ == "__main__":
+    # Тест отправки
+    asyncio.run(send_telegram_message(123456789, "Тестовое уведомление!"))

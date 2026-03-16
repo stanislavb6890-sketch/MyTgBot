@@ -578,6 +578,13 @@ async def create_trial_subscription(request):
         conn.commit()
         conn.close()
         
+        # Отправляем уведомление о триале
+        try:
+            from bot.utils.notifications import notify_trial_activated
+            asyncio.create_task(notify_trial_activated(telegram_id))
+        except Exception as e:
+            logger.error(f"Ошибка отправки уведомления о триале: {e}")
+        
         return web.json_response({
             'success': True,
             'subscription_id': sub_id,
@@ -823,6 +830,43 @@ asyncio.run(enable_vpn_user("{uuid}"))
                 logger.error(f"Ошибка активации: {result.stderr}")
         except Exception as e:
             logger.error(f"Ошибка активации VPN: {e}")
+    
+    # Отправляем уведомление об оплате
+    try:
+        # Получаем данные подписки для уведомления
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT s.id, s.expires_at, s.traffic_limit_bytes, s.devices_limit, u.balance
+            FROM subscriptions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.id = ?
+        """, (sub_id,))
+        sub_row = cursor.fetchone()
+        conn.close()
+        
+        if sub_row:
+            # Запускаем уведомление через subprocess
+            import subprocess
+            try:
+                subproc = subprocess.run([
+                    'python3', '-c', f'''
+import asyncio
+from bot.utils.notifications import notify_payment_success
+asyncio.run(notify_payment_success({telegram_id}, {{
+    "id": {sub_row[0]},
+    "expires_at": "{sub_row[1]}",
+    "traffic_limit": {sub_row[2] / (1024**3) if sub_row[2] else 0},
+    "devices": {sub_row[3]}
+}}, {sub_row[4]}))
+'''
+                ], cwd='/root/.openclaw/workspace/vpn-bot', capture_output=True, timeout=10)
+                if subproc.returncode != 0:
+                    logger.error(f"Ошибка уведомления: {subproc.stderr.decode()}")
+            except Exception as e:
+                logger.error(f"Ошибка отправки уведомления: {e}")
+    except Exception as e:
+        logger.error(f"Ошибка отправки уведомления: {e}")
     
     return web.json_response({
         'success': True,
@@ -1123,10 +1167,19 @@ async def admin_add_balance(request):
     cursor.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
     conn.commit()
     
-    cursor.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
-    new_balance = cursor.fetchone()[0]
+    cursor.execute("SELECT balance, telegram_id FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    new_balance, telegram_id = row
     
     conn.close()
+    
+    # Отправляем уведомление о пополнении
+    if telegram_id:
+        try:
+            from bot.utils.notifications import notify_balance_topup
+            asyncio.create_task(notify_balance_topup(telegram_id, amount, new_balance))
+        except Exception as e:
+            logger.error(f"Ошибка отправки уведомления: {e}")
     
     return web.json_response({
         'success': True,
