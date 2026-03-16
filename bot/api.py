@@ -85,6 +85,51 @@ async def get_user_data(request):
     })
 
 
+async def get_squads(request):
+    """Получить доступные сквады"""
+    try:
+        from remnawave import RemnawaveSDK
+        from config import REMNAWAVE_URL, REMNAWAVE_TOKEN
+        
+        sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
+        squads = await sdk.internal_squads.get_internal_squads()
+        
+        squads_list = []
+        for s in squads.internal_squads:
+            # Определяем страну по названию
+            name = s.name.lower()
+            country_emoji = "🌍"
+            country_code = "XX"
+            if "uk" in name or "gb" in name:
+                country_emoji = "🇬🇧"
+                country_code = "UK"
+            elif "nl" in name or "netherlands" in name:
+                country_emoji = "🇳🇱"
+                country_code = "NL"
+            elif "fi" in name or "finland" in name:
+                country_emoji = "🇫🇮"
+                country_code = "FI"
+            elif "de" in name or "germany" in name:
+                country_emoji = "🇩🇪"
+                country_code = "DE"
+            elif "ru" in name or "russia" in name or "msk" in name:
+                country_emoji = "🇷🇺"
+                country_code = "RU"
+            
+            squads_list.append({
+                'uuid': str(s.uuid),
+                'name': s.name,
+                'country_code': country_code,
+                'emoji': country_emoji,
+                'members': s.info.members_count if s.info else 0
+            })
+        
+        return web.json_response({'squads': squads_list})
+    except Exception as e:
+        logger.error(f"Ошибка получения сквадов: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
 async def get_subscription_links(request):
     """Получить ссылку подписки (для активных)"""
     sub_id = request.query.get('sub_id')
@@ -225,6 +270,17 @@ async def create_subscription_api(request):
     devices = int(request.query.get('devices', '1'))
     servers_param = request.query.get('servers', '')
     servers = servers_param.split(',') if servers_param else []
+    
+    # Маппинг reset типа на стратегию RemnaWave
+    traffic_reset_map = {
+        'no_reset': 'NO_RESET',
+        'daily': 'DAY',
+        'weekly': 'WEEK',
+        'monthly': 'MONTH'
+    }
+    traffic_reset_param = request.query.get('traffic_reset', 'no_reset')
+    traffic_reset = traffic_reset_map.get(traffic_reset_param, 'NO_RESET')
+    
     # Цена с фронтенда (или рассчитать, если не передана)
     try:
         price_from_frontend = float(request.query.get('price', '0'))
@@ -239,7 +295,7 @@ async def create_subscription_api(request):
     except ValueError:
         return web.json_response({'error': 'invalid parameters'}, status=400)
     
-    from bot.utils.database import create_subscription
+    from bot.utils.database import create_subscription, add_subscription_server
     from bot.utils.remnawave import create_vpn_user
     
     # Получаем user_id
@@ -304,9 +360,59 @@ async def create_subscription_api(request):
             traffic_limit_bytes=traffic * (1024**3),
             expire_days=days,
             is_disabled=True,
-            telegram_id=telegram_id
+            telegram_id=telegram_id,
+            traffic_reset=traffic_reset,
+            devices_limit=devices
         )
         sub_uuid = vpn_user["uuid"]
+        
+        # Добавляем пользователя в выбранные сквады
+        if servers:
+            try:
+                from remnawave import RemnawaveSDK
+                from config import REMNAWAVE_URL, REMNAWAVE_TOKEN
+                
+                sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
+                all_squads = await sdk.internal_squads.get_internal_squads()
+                
+                # Маппинг country_code -> uuid
+                country_to_uuid = {}
+                for s in all_squads.internal_squads:
+                    name = s.name.lower()
+                    if "uk" in name or "gb" in name:
+                        country_to_uuid["UK"] = str(s.uuid)
+                    elif "nl" in name or "netherlands" in name:
+                        country_to_uuid["NL"] = str(s.uuid)
+                    elif "fi" in name or "finland" in name:
+                        country_to_uuid["FI"] = str(s.uuid)
+                    elif "de" in name or "germany" in name:
+                        country_to_uuid["DE"] = str(s.uuid)
+                    elif "ru" in name or "russia" in name or "msk" in name:
+                        country_to_uuid["RU"] = str(s.uuid)
+                
+                # Выбираем UUID для выбранных серверов
+                squad_uuids = []
+                for server_code in servers:
+                    if server_code in country_to_uuid:
+                        squad_uuids.append(country_to_uuid[server_code])
+                
+                # Добавляем пользователя в сквады
+                if squad_uuids:
+                    for squad_uuid in squad_uuids:
+                        try:
+                            # Используем прямой HTTP вызов
+                            response = await sdk.internal_squads.client.request(
+                                method='POST',
+                                url=f'/internal-squads/{squad_uuid}/bulk-actions/add-users',
+                                json={'userUuids': [vpn_user["uuid"]]}
+                            )
+                            if response.status_code != 200:
+                                logger.error(f"Ошибка добавления в сквад {squad_uuid}: {response.text}")
+                        except Exception as sq_e:
+                            logger.error(f"Ошибка добавления в сквад {squad_uuid}: {sq_e}")
+                    logger.info(f"✅ Пользователь {vpn_username} добавлен в сквады: {squad_uuids}")
+            except Exception as e:
+                logger.error(f"Ошибка добавления в сквады: {e}")
     except Exception as e:
         logger.error(f"Ошибка создания VPN пользователя: {e}")
         return web.json_response({'error': f'Ошибка создания VPN: {str(e)}'}, status=500)
@@ -327,6 +433,21 @@ async def create_subscription_api(request):
             is_paid=False,
             price=price
         )
+        
+        # Сохраняем выбранные серверы
+        if servers:
+            for server_code in servers:
+                # Маппинг country_code -> name для сохранения
+                server_names = {
+                    'UK': 'UK - Server',
+                    'NL': 'NL - Server',
+                    'FI': 'FI - Server',
+                    'RU': 'Russia',
+                    'DE': 'Germany'
+                }
+                server_name = server_names.get(server_code, server_code)
+                add_subscription_server(sub_id, server_code, server_name, server_code)
+        
     except Exception as e:
         logger.error(f"Ошибка создания подписки: {e}")
         conn.close()
@@ -562,7 +683,8 @@ async def pay_with_balance(request):
             result = subprocess.run(
                 ['python3', '-c', f'''
 import asyncio
-from bot.utils.remnawave import enable_vpn_user
+from bot.utils.remnawave import enable_vpn_user, add_user_to_squads
+import asyncio
 asyncio.run(enable_vpn_user("{uuid}"))
 '''],
                 capture_output=True,
@@ -890,6 +1012,7 @@ async def admin_add_balance(request):
 
 def setup_api_routes(app):
     """Настроить API маршруты"""
+    app.router.add_get('/api/squads', get_squads)
     app.router.add_get('/api/user', get_user_data)
     app.router.add_get('/api/subscription/links', get_subscription_links)
     app.router.add_get('/api/subscription/payment', get_payment_url)

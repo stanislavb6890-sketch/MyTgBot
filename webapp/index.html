@@ -677,6 +677,30 @@
             step: 1
         };
         
+        // Кэш сквадов
+        let squadsCache = null;
+        
+        // Функция для перехода на шаг 4 с загрузкой сквадов
+        async function goToStep4() {
+            // Загружаем сквады если ещё нет
+            if (!squadsCache) {
+                try {
+                    const resp = await fetch(`${API_BASE}/api/squads`);
+                    const data = await resp.json();
+                    squadsCache = (data.squads || []).map(s => ({
+                        id: s.country_code || s.uuid?.substring(0,8),  // Используем country_code или UUID
+                        name: s.emoji + ' ' + s.name,
+                        uuid: s.uuid,
+                        price: 45
+                    }));
+                } catch(e) {
+                    console.error('Ошибка загрузки сквадов:', e);
+                }
+            }
+            createData.step = 4;
+            renderCreateStep();
+        }
+        
         // Сброс трафика
         const resetOptions = [
             { value: 'daily', label: 'Раз в сутки' },
@@ -1510,13 +1534,13 @@
                     <button class="btn btn-secondary" onclick="createData.step = 2; renderCreateStep()">
                         ← Назад
                     </button>
-                    <button class="btn btn-primary" onclick="createData.step = 4; renderCreateStep()">
+                    <button class="btn btn-primary" onclick="goToStep4()">
                         Далее →
                     </button>
                 `;
             } else if (createData.step === 4) {
-                // Шаг 4: Серверы (чекбоксы) - без обязательного минимума
-                const servers = [
+                // Шаг 4: Серверы (из кэша сквадов)
+                const servers = squadsCache || [
                     { id: 'RU', name: '🇷🇺 Россия', price: 0 },
                     { id: 'FI', name: '🇫🇮 Finland', price: 45 },
                     { id: 'DE', name: '🇩🇪 Germany', price: 45 },
@@ -1596,7 +1620,7 @@
                         <div class="price">${price} ₽</div>
                     </div>
                     
-                    <button class="btn btn-secondary" onclick="createData.step = 4; renderCreateStep()">
+                    <button class="btn btn-secondary" onclick="goToStep4()">
                         ← Назад
                     </button>
                     <button class="btn btn-primary" onclick="createSubscription()">
@@ -1677,8 +1701,7 @@
             
             try {
                 const serversParam = createData.servers.join(',');
-                const price = calculatePrice();
-                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.days}&traffic=${createData.traffic}&devices=${createData.devices}&servers=${serversParam}&price=${price}`;
+                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.days}&traffic=${createData.traffic}&devices=${createData.devices}&servers=${serversParam}&traffic_reset=${createData.traffic_reset}`;
                 
                 const response = await fetch(url, { method: 'POST' });
                 const data = await response.json();

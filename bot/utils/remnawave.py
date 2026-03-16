@@ -53,7 +53,9 @@ class RemnaWaveClient:
         traffic_limit_bytes: int = 10 * 1024 * 1024 * 1024,
         expire_days: int = 30,
         is_disabled: bool = True,
-        telegram_id: int = None
+        telegram_id: int = None,
+        traffic_reset: str = "NO_RESET",
+        devices_limit: int = 1
     ) -> dict:
         """Создать пользователя (выключен по умолчанию)"""
         from datetime import datetime, timedelta
@@ -68,13 +70,19 @@ class RemnaWaveClient:
         
         status = "DISABLED" if is_disabled else "ACTIVE"
         
+        # Валидация стратегии сброса
+        valid_strategies = ["NO_RESET", "DAY", "WEEK", "MONTH"]
+        if traffic_reset not in valid_strategies:
+            traffic_reset = "NO_RESET"
+        
         try:
             body = CreateUserRequestDto(
                 username=username,
                 expire_at=expire_at.isoformat() + "Z",
                 status=status,
                 traffic_limit_bytes=traffic_limit_bytes,
-                traffic_limit_strategy="NO_RESET",
+                traffic_limit_strategy=traffic_reset,
+                hwid_device_limit=devices_limit,
                 vless_uuid=vless_uuid,
                 trojan_password=trojan_password,
                 ss_password=ss_password,
@@ -157,7 +165,9 @@ async def create_vpn_user(
     traffic_limit_bytes: int,
     expire_days: int,
     is_disabled: bool = True,
-    telegram_id: int = None
+    telegram_id: int = None,
+    traffic_reset: str = "NO_RESET",
+    devices_limit: int = 1
 ) -> dict:
     """Создать VPN пользователя"""
     client = RemnaWaveClient()
@@ -166,7 +176,9 @@ async def create_vpn_user(
         traffic_limit_bytes=traffic_limit_bytes,
         expire_days=expire_days,
         is_disabled=is_disabled,
-        telegram_id=telegram_id
+        telegram_id=telegram_id,
+        traffic_reset=traffic_reset,
+        devices_limit=devices_limit
     )
 
 

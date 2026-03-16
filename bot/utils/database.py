@@ -91,6 +91,9 @@ def get_db_connection():
 
 def get_or_create_user(telegram_id: int, username: str = None, first_name: str = None):
     """Получить или создать пользователя"""
+    import random
+    import string
+    
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -98,9 +101,11 @@ def get_or_create_user(telegram_id: int, username: str = None, first_name: str =
     user = cursor.fetchone()
 
     if not user:
+        # Генерируем реферальный код
+        referral_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         cursor.execute(
-            "INSERT INTO users (telegram_id, username, first_name) VALUES (?, ?, ?)",
-            (telegram_id, username, first_name)
+            "INSERT INTO users (telegram_id, username, first_name, referral_code) VALUES (?, ?, ?, ?)",
+            (telegram_id, username, first_name, referral_code)
         )
         conn.commit()
         user_id = cursor.lastrowid
