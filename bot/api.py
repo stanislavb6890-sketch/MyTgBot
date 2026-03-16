@@ -130,6 +130,247 @@ async def get_squads(request):
         return web.json_response({'error': str(e)}, status=500)
 
 
+async def get_subscription_servers(request):
+    """Получить серверы подписки"""
+    sub_id = request.query.get('sub_id')
+    
+    if not sub_id:
+        return web.json_response({'error': 'sub_id required'}, status=400)
+    
+    try:
+        sub_id = int(sub_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid sub_id'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Получаем серверы подписки
+    cursor.execute("""
+        SELECT node_uuid, node_name, country_code 
+        FROM subscription_servers 
+        WHERE subscription_id = ?
+    """, (sub_id,))
+    
+    servers = []
+    for row in cursor.fetchall():
+        servers.append({
+            'uuid': row[0],
+            'name': row[1],
+            'country_code': row[2]
+        })
+    
+    conn.close()
+    
+    return web.json_response({
+        'subscription_id': sub_id,
+        'servers': servers
+    })
+
+
+async def update_subscription_servers(request):
+    """Обновить серверы подписки (добавить/удалить)"""
+    telegram_id = request.query.get('user_id') or request.query.get('telegram_id')
+    sub_id = request.query.get('sub_id')
+    action = request.query.get('action')  # 'add' или 'remove'
+    squad_uuid = request.query.get('squad_uuid')
+    
+    if not telegram_id or not sub_id or not action or not squad_uuid:
+        return web.json_response({'error': 'telegram_id, sub_id, action и squad_uuid required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+        sub_id = int(sub_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Проверяем подписку
+    cursor.execute("""
+        SELECT s.remnawave_uuid, s.user_id, u.telegram_id
+        FROM subscriptions s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.id = ? AND u.telegram_id = ?
+    """, (sub_id, telegram_id))
+    
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'subscription not found'}, status=404)
+    
+    vpn_uuid, user_id, db_telegram_id = row
+    conn.close()
+    
+    try:
+        from remnawave import RemnawaveSDK
+        from config import REMNAWAVE_URL, REMNAWAVE_TOKEN
+        
+        sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
+        
+        if action == 'add':
+            # Добавляем пользователя в сквад
+            response = await sdk.internal_squads.client.request(
+                method='POST',
+                url=f'/internal-squads/{squad_uuid}/bulk-actions/add-users',
+                json={'userUuids': [vpn_uuid]}
+            )
+            
+            # Сохраняем в БД
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR IGNORE INTO subscription_servers 
+                (subscription_id, node_uuid, node_name, country_code)
+                VALUES (?, ?, ?, ?)
+            """, (sub_id, squad_uuid, 'Server', squad_uuid[:8]))
+            conn.commit()
+            conn.close()
+            
+            return web.json_response({'success': True, 'action': 'added'})
+        
+        elif action == 'remove':
+            # Удаляем пользователя из сквада
+            response = await sdk.internal_squads.client.request(
+                method='POST',
+                url=f'/internal-squads/{squad_uuid}/bulk-actions/remove-users',
+                json={'userUuids': [vpn_uuid]}
+            )
+            
+            # Удаляем из БД
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM subscription_servers 
+                WHERE subscription_id = ? AND node_uuid = ?
+            """, (sub_id, squad_uuid))
+            conn.commit()
+            conn.close()
+            
+            return web.json_response({'success': True, 'action': 'removed'})
+        
+        else:
+            return web.json_response({'error': 'invalid action'}, status=400)
+            
+    except Exception as e:
+        logger.error(f"Ошибка обновления серверов: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def get_addons_price(request):
+    """Получить стоимость дополнений"""
+    # Цена за сервер = 45₽
+    # Цена за 1GB трафика = 2₽
+    # Цена за 1 устройство = 25₽
+    
+    return web.json_response({
+        'server_price': 45,
+        'traffic_price_per_gb': 2,
+        'device_price': 25
+    })
+
+
+async def add_subscription_traffic(request):
+    """Добавить трафик к подписке"""
+    telegram_id = request.query.get('user_id') or request.query.get('telegram_id')
+    sub_id = request.query.get('sub_id')
+    gb_amount = request.query.get('gb')  # сколько GB добавить
+    
+    if not telegram_id or not sub_id or not gb_amount:
+        return web.json_response({'error': 'telegram_id, sub_id и gb required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+        sub_id = int(sub_id)
+        gb_amount = int(gb_amount)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    price_per_gb = 2
+    total_price = gb_amount * price_per_gb
+    
+    # Проверяем баланс
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, balance FROM users WHERE telegram_id = ?", (telegram_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user_id, balance = row
+    
+    if balance < total_price:
+        conn.close()
+        return web.json_response({'error': 'insufficient balance', 'required': total_price, 'available': balance}, status=400)
+    
+    # Списываем баланс
+    cursor.execute("UPDATE users SET balance = balance - ? WHERE id = ?", (total_price, user_id))
+    
+    # Добавляем трафик
+    gb_bytes = gb_amount * (1024**3)
+    cursor.execute("UPDATE subscriptions SET traffic_limit_bytes = traffic_limit_bytes + ? WHERE id = ?", (gb_bytes, sub_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({
+        'success': True,
+        'gb_added': gb_amount,
+        'price': total_price,
+        'remaining_balance': balance - total_price
+    })
+
+
+async def add_subscription_device(request):
+    """Добавить устройство к подписке"""
+    telegram_id = request.query.get('user_id') or request.query.get('telegram_id')
+    sub_id = request.query.get('sub_id')
+    
+    if not telegram_id or not sub_id:
+        return web.json_response({'error': 'telegram_id и sub_id required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+        sub_id = int(sub_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    device_price = 25
+    
+    # Проверяем баланс
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, balance, devices_limit FROM users u JOIN subscriptions s ON u.id = s.user_id WHERE u.telegram_id = ? AND s.id = ?", (telegram_id, sub_id))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'subscription not found'}, status=404)
+    
+    user_id, balance, current_devices = row
+    
+    if balance < device_price:
+        conn.close()
+        return web.json_response({'error': 'insufficient balance', 'required': device_price, 'available': balance}, status=400)
+    
+    # Списываем баланс
+    cursor.execute("UPDATE users SET balance = balance - ? WHERE id = ?", (device_price, user_id))
+    
+    # Добавляем устройство
+    cursor.execute("UPDATE subscriptions SET devices_limit = devices_limit + 1 WHERE id = ?", (sub_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({
+        'success': True,
+        'new_devices': current_devices + 1,
+        'price': device_price,
+        'remaining_balance': balance - device_price
+    })
+
+
 async def get_subscription_links(request):
     """Получить ссылку подписки (для активных)"""
     sub_id = request.query.get('sub_id')
@@ -1192,6 +1433,11 @@ async def admin_add_balance(request):
 def setup_api_routes(app):
     """Настроить API маршруты"""
     app.router.add_get('/api/squads', get_squads)
+    app.router.add_get('/api/subscription/servers', get_subscription_servers)
+    app.router.add_post('/api/subscription/servers', update_subscription_servers)
+    app.router.add_get('/api/subscription/addons-price', get_addons_price)
+    app.router.add_post('/api/subscription/traffic', add_subscription_traffic)
+    app.router.add_post('/api/subscription/device', add_subscription_device)
     app.router.add_get('/api/user', get_user_data)
     app.router.add_get('/api/subscription/links', get_subscription_links)
     app.router.add_get('/api/subscription/payment', get_payment_url)
