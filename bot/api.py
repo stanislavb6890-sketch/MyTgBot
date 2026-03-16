@@ -463,6 +463,132 @@ async def create_subscription_api(request):
     })
 
 
+async def create_trial_subscription(request):
+    """Создать триал подписку (тестовый период)"""
+    telegram_id = request.query.get('user_id') or request.query.get('telegram_id')
+    
+    if not telegram_id:
+        return web.json_response({'error': 'telegram_id required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid telegram_id'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Проверяем пользователя
+    cursor.execute("SELECT id, username, first_name, has_trial FROM users WHERE telegram_id = ?", (telegram_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user_id, username, first_name, has_trial = row
+    
+    # Проверяем: если уже был триал - отказываем
+    if has_trial:
+        conn.close()
+        return web.json_response({'error': 'trial already used'}, status=400)
+    
+    # Проверяем: есть ли уже активная оплаченная подписка
+    cursor.execute("SELECT COUNT(*) FROM subscriptions WHERE user_id = ? AND is_paid = 1 AND status = 'active'", (user_id,))
+    if cursor.fetchone()[0] > 0:
+        conn.close()
+        return web.json_response({'error': 'already has active subscription'}, status=400)
+    
+    conn.close()
+    
+    # Параметры триала
+    TRIAL_DAYS = 3
+    TRIAL_TRAFFIC = 5  # GB
+    TRIAL_DEVICES = 1
+    
+    # Генерируем уникальный username
+    import random
+    import string
+    random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    vpn_username = f"trial{telegram_id}_{random_suffix}"
+    
+    # Импортируем функцию создания VPN пользователя
+    from bot.utils.remnawave import create_vpn_user
+    
+    try:
+        # Создаём VPN пользователя (сразу активен)
+        vpn_user = await create_vpn_user(
+            username=vpn_username,
+            traffic_limit_bytes=TRIAL_TRAFFIC * (1024**3),
+            expire_days=TRIAL_DAYS,
+            is_disabled=False,  # Сразу активен
+            telegram_id=telegram_id,
+            traffic_reset="NO_RESET",
+            devices_limit=TRIAL_DEVICES
+        )
+        
+        # Добавляем в первый доступный сквад
+        try:
+            from remnawave import RemnawaveSDK
+            from config import REMNAWAVE_URL, REMNAWAVE_TOKEN
+            sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
+            squads = await sdk.internal_squads.get_internal_squads()
+            if squads.internal_squads:
+                first_squad = squads.internal_squads[0]
+                # Добавляем пользователя в сквад
+                response = await sdk.internal_squads.client.request(
+                    method='POST',
+                    url=f'/internal-squads/{str(first_squad.uuid)}/bulk-actions/add-users',
+                    json={'userUuids': [vpn_user["uuid"]]}
+                )
+        except Exception as sq_e:
+            logger.error(f"Ошибка добавления в сквад: {sq_e}")
+        
+        # Создаём подписку в БД
+        from bot.utils.database import create_subscription
+        from datetime import datetime, timedelta
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        expires_at = datetime.now() + timedelta(days=TRIAL_DAYS)
+        
+        cursor.execute("""
+            INSERT INTO subscriptions 
+            (user_id, remnawave_uuid, short_uuid, username, duration_days, traffic_limit_bytes,
+             devices_limit, servers_count, reset_type, is_trial, is_paid, price, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, vpn_user["uuid"], vpn_user["short_uuid"], vpn_user["username"], 
+              TRIAL_TRAFFIC * (1024**3), TRIAL_TRAFFIC * (1024**3),
+              TRIAL_DEVICES, 1, 'none', True, True, 0, expires_at))
+        
+        sub_id = cursor.lastrowid
+        
+        # Сохраняем сервер (первый сквад)
+        if squads.internal_squads:
+            first_squad = squads.internal_squads[0]
+            cursor.execute(
+                "INSERT INTO subscription_servers (subscription_id, node_uuid, node_name, country_code) VALUES (?, ?, ?, ?)",
+                (sub_id, str(first_squad.uuid), first_squad.name, first_squad.name[:2].upper())
+            )
+        
+        # Помечаем что триал использован
+        cursor.execute("UPDATE users SET has_trial = 1 WHERE id = ?", (user_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return web.json_response({
+            'success': True,
+            'subscription_id': sub_id,
+            'message': f'Тестовый период активирован! {TRIAL_DAYS} дней, {TRIAL_TRAFFIC} GB'
+        })
+        
+    except Exception as e:
+        logger.error(f"Ошибка создания триала: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
 async def get_renewal_options(request):
     """Получить варианты продления"""
     sub_id = request.query.get('sub_id')
@@ -1018,6 +1144,7 @@ def setup_api_routes(app):
     app.router.add_get('/api/subscription/payment', get_payment_url)
     app.router.add_post('/api/subscription/delete', delete_subscription)
     app.router.add_post('/api/subscription/create', create_subscription_api)
+    app.router.add_post('/api/subscription/trial', create_trial_subscription)
     app.router.add_get('/api/subscription/renewal', get_renewal_options)
     app.router.add_get('/api/payments', get_user_payments)
     app.router.add_get('/api/balance/topup', get_balance_topup)

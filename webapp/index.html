@@ -824,13 +824,27 @@
         function renderSubscriptions() {
             const content = document.getElementById('content');
             
+            // Проверяем: если нет подписок и не было триала - показываем кнопку триала
+            const hasActiveSubscription = subscriptions.some(s => s.status === 'active' && s.is_paid);
+            const canGetTrial = subscriptions.length === 0 && !userData?.has_trial;
+            
             if (subscriptions.length === 0) {
+                let buttonsHtml = '';
+                
+                // Кнопка создания подписки
+                buttonsHtml += `<button class="btn btn-primary" onclick="createData.step = 1; renderCreateTariff();" style="margin-bottom: 8px;">➕ Создать подписку</button>`;
+                
+                // Кнопка триала (если можно)
+                if (canGetTrial) {
+                    buttonsHtml += `<button class="btn btn-secondary" onclick="createTrial()" style="margin-bottom: 8px;">🆓 Тестовый период</button>`;
+                }
+                
                 content.innerHTML = `
                     <div class="empty-state">
                         <div class="icon">📭</div>
                         <h3>Нет подписок</h3>
-                        <p>Создайте подписку в боте</p>
-                        <button class="btn btn-primary" onclick="createData.step = 1; renderCreateTariff();">➕ Создать подписку</button>
+                        <p>${canGetTrial ? 'Получите тестовый период или создайте подписку' : 'Создайте подписку'}</p>
+                        ${buttonsHtml}
                     </div>
                 `;
                 return;
@@ -1206,16 +1220,6 @@
                         <div class="label">Покупок</div>
                         <div class="value">${purchases}</div>
                     </div>
-                    ${userData?.has_trial ? `
-                    <div class="stat-card" style="border-color: var(--accent);">
-                        <div class="label">🎁 TRIAL</div>
-                        <div class="value" style="color: var(--accent);">Доступен</div>
-                    </div>
-                    ` : `
-                    <button class="btn btn-primary" onclick="alert('Для получения Trial обратитесь к боту /start')" style="margin-top: 12px;">
-                        🎁 Получить Trial
-                    </button>
-                    `}
                 </div>
                 
                 <div class="section-title">🎁 Реферальная программа</div>
@@ -1223,10 +1227,6 @@
                 <div id="referral-content">
                     <div class="loading">Загрузка...</div>
                 </div>
-                
-                <button class="btn btn-secondary" onclick="closeApp()" style="margin-top: 20px;">
-                    🚀 Открыть бота
-                </button>
             `;
             
             // Загружаем реферальную информацию
@@ -1679,6 +1679,37 @@
             
             // Применяем коэффициент сброса и скидку
             return Math.round(basePrice * multiplier * discount);
+        }
+        
+        async function createTrial() {
+            showLoading();
+            
+            // Get telegramId
+            let telegramId = null;
+            const params = new URLSearchParams(window.location.search);
+            telegramId = params.get('user_id') || params.get('telegram_id');
+            if (!telegramId && typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                telegramId = tg.initDataUnsafe.user.id;
+            }
+            
+            if (!telegramId) {
+                alert('Ошибка: не найден telegramId');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/subscription/trial?user_id=${telegramId}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('🎉 Поздравляем!\n\nВы активировали тестовый период:\n• Срок: 3 дня\n• Трафик: 5 GB\n• Устройства: 1\n• Сервер: добавлен в вашу подписку');
+                    await loadData();
+                } else {
+                    alert('❌ ' + (data.error || 'Ошибка'));
+                }
+            } catch (e) {
+                alert('❌ Ошибка: ' + e.message);
+            }
         }
         
         async function createSubscription() {
