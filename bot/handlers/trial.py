@@ -46,7 +46,8 @@ async def confirm_trial(callback: CallbackQuery):
             username=f"trial_{telegram_id}",
             traffic_limit_bytes=TRIAL_TRAFFIC,
             expire_days=TRIAL_DAYS,
-            is_disabled=False  # Сразу включён для теста
+            is_disabled=False,  # Сразу включён для теста
+            telegram_id=telegram_id
         )
         
         # Сохраняем в БД

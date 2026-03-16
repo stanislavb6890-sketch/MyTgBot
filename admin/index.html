@@ -360,8 +360,21 @@
             
             if (!confirm(`Добавить ${amount}₽ пользователю ${telegramId}?`)) return;
             
-            // Просто показываем - нужен API для этого
-            alert('Функция в разработке. Используйте SQLite для изменения баланса.');
+            try {
+                const resp = await fetch(`${API}/api/admin/add_balance?key=${ADMIN_KEY}&user_id=${userId}&amount=${amount}`, {
+                    method: 'POST'
+                });
+                const data = await resp.json();
+                
+                if (data.success) {
+                    alert(`✅ Добавлено! Новый баланс: ${data.new_balance}₽`);
+                    loadBalance(); // Перезагрузить таблицу
+                } else {
+                    alert('❌ Ошибка: ' + (data.error || 'Unknown'));
+                }
+            } catch (e) {
+                alert('❌ Ошибка: ' + e.message);
+            }
         }
         
         async function loadAll() {

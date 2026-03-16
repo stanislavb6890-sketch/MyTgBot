@@ -104,6 +104,29 @@ async def back_to_main(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data == "help")
+async def help_callback(callback: CallbackQuery):
+    """Помощь"""
+    text = """❓ Помощь
+
+Для работы с VPN используйте наше приложение:
+🌐 Кнопка «Открыть App»
+
+Там вы можете:
+• Создать подписку
+• Оплатить
+• Управлять серверами
+• Продлить подписку
+
+📞 Поддержка: @admin
+
+💰 Реферальная программа:
+Приглашайте друзей и получайте бонусы!
+"""
+    await callback.message.edit_text(text, reply_markup=get_main_keyboard(False, False, callback.from_user.id))
+    await callback.answer()
+
+
 @router.message(F.text == "/admin")
 async def cmd_admin(message: Message):
     """Админ-команда"""

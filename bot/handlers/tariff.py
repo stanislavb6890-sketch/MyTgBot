@@ -455,7 +455,8 @@ async def confirm_payment(callback: CallbackQuery, state: FSMContext):
             username=username,
             traffic_limit_bytes=traffic_limit,
             expire_days=TARIFFS["duration"][data["duration"]]["days"],
-            is_disabled=True  # Выключен до оплаты
+            is_disabled=True,  # Выключен до оплаты
+            telegram_id=telegram_id
         )
         
         # Сохраняем в БД

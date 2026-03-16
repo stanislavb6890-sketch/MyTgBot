@@ -1677,8 +1677,7 @@
             
             try {
                 const serversParam = createData.servers.join(',');
-                const price = calculatePrice();
-                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.days}&traffic=${createData.traffic}&devices=${createData.devices}&servers=${serversParam}&price=${price}`;
+                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.days}&traffic=${createData.traffic}&devices=${createData.devices}&servers=${serversParam}`;
                 
                 const response = await fetch(url, { method: 'POST' });
                 const data = await response.json();

@@ -5,27 +5,19 @@ from config import TARIFFS, WEBHOOK_URL
 
 
 def get_main_keyboard(has_subscription: bool = False, has_trial: bool = False, telegram_id: int = None):
-    """Главная клавиатура"""
+    """Главная клавиатура - упрощённая"""
     keyboard = InlineKeyboardBuilder()
     
-    # Web App кнопка - добавляем user_id если есть
+    # Web App кнопка - основная
     app_url = "https://test.cloaknet.site/miniapp"
     if telegram_id:
         app_url += f"?user_id={telegram_id}"
     keyboard.button(text="🌐 Открыть App", web_app=WebAppInfo(url=app_url))
     
-    # Кабинет - только если есть подписка и мы не в кабинете
-    if has_subscription:
-        keyboard.button(text="📱 Кабинет", callback_data="my_subscriptions")
+    # Помощь/Поддержка
+    keyboard.button(text="❓ Помощь", callback_data="help")
     
-    # Создать тариф - всегда показываем
-    keyboard.button(text="🛠️ Создать тариф", callback_data="create_tariff")
-    
-    # Тестовый период - только если ещё не получал
-    if not has_trial:
-        keyboard.button(text="💳 Тестовый период", callback_data="get_trial")
-    
-    keyboard.adjust(1, 2)
+    keyboard.adjust(1, 1)
     return keyboard.as_markup()
 
 

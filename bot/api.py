@@ -214,6 +214,134 @@ async def delete_subscription(request):
     return web.json_response({'success': True, 'sub_id': sub_id})
 
 
+async def create_subscription_api(request):
+    """Создать подписку из Mini App"""
+    import asyncio
+    import uuid as uuid_module
+    
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
+    days = int(request.query.get('days', '30'))
+    traffic = int(request.query.get('traffic', '10'))
+    devices = int(request.query.get('devices', '1'))
+    servers_param = request.query.get('servers', '')
+    servers = servers_param.split(',') if servers_param else []
+    # Цена с фронтенда (или рассчитать, если не передана)
+    try:
+        price_from_frontend = float(request.query.get('price', '0'))
+    except:
+        price_from_frontend = 0
+    
+    if not telegram_id:
+        return web.json_response({'error': 'telegram_id required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    from bot.utils.database import create_subscription
+    from bot.utils.remnawave import create_vpn_user
+    
+    # Получаем user_id
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, first_name FROM users WHERE telegram_id = ?", (telegram_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user_id, username, first_name = row
+    
+    # Получаем номер подписки для генерации username
+    cursor.execute("SELECT purchase_count FROM users WHERE id = ?", (user_id,))
+    purchase_row = cursor.fetchone()
+    purchase_count = purchase_row[0] if purchase_row else 0
+    
+    # Увеличиваем счётчик
+    cursor.execute("UPDATE users SET purchase_count = purchase_count + 1 WHERE id = ?", (user_id,))
+    conn.commit()
+    
+    # Генерируем username: user{telegram_id} или user{telegram_id}_001
+    if purchase_count == 0:
+        vpn_username = f"user{telegram_id}"
+    else:
+        vpn_username = f"user{telegram_id}_{purchase_count:03d}"
+    
+    # Рассчитываем цену по формуле Mini App
+    # 4.5₽ × дни + 2₽ × GB + 25₽ × устройства + 45₽ × серверы
+    servers_count = len(servers)
+    base_price = days * 4.5 + traffic * 2 + devices * 25 + servers_count * 45
+    
+    # Скидка за период
+    discount = 1
+    if days >= 365:
+        discount = 0.7
+    elif days >= 180:
+        discount = 0.8
+    elif days >= 90:
+        discount = 0.85
+    
+    price = round(base_price * discount)
+    
+    # Используем цену с фронтенда, если передана
+    if price_from_frontend > 0:
+        price = price_from_frontend
+    
+    import uuid as uuid_module
+    import random
+    import string
+    
+    # Генерируем уникальный username
+    random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    username = f"user{telegram_id}_{random_suffix}"
+    
+    # Создаём пользователя в RemnaWave (выключен до оплаты)
+    try:
+        vpn_user = await create_vpn_user(
+            username=vpn_username,
+            traffic_limit_bytes=traffic * (1024**3),
+            expire_days=days,
+            is_disabled=True,
+            telegram_id=telegram_id
+        )
+        sub_uuid = vpn_user["uuid"]
+    except Exception as e:
+        logger.error(f"Ошибка создания VPN пользователя: {e}")
+        return web.json_response({'error': f'Ошибка создания VPN: {str(e)}'}, status=500)
+    
+    # Создаём подписку в БД
+    try:
+        sub_id = create_subscription(
+            user_id=user_id,
+            remnawave_uuid=vpn_user["uuid"],
+            short_uuid=vpn_user["short_uuid"],
+            username=vpn_user["username"],
+            duration_days=days,
+            traffic_limit_bytes=traffic * (1024**3),
+            devices_limit=devices,
+            servers_count=len(servers),
+            reset_type='monthly',
+            is_trial=False,
+            is_paid=False,
+            price=price
+        )
+    except Exception as e:
+        logger.error(f"Ошибка создания подписки: {e}")
+        conn.close()
+        return web.json_response({'error': str(e)}, status=500)
+    
+    conn.close()
+    
+    return web.json_response({
+        'success': True,
+        'subscription_id': sub_id,
+        'price': price,
+        'message': f'Подписка создана! Цена: {price}₽'
+    })
+
+
 async def get_renewal_options(request):
     """Получить варианты продления"""
     sub_id = request.query.get('sub_id')
@@ -723,12 +851,50 @@ async def admin_get_payments(request):
     return web.json_response({'payments': []})
 
 
+async def admin_add_balance(request):
+    """Добавить баланс пользователю"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    user_id = request.query.get('user_id')
+    amount = request.query.get('amount')
+    
+    if not user_id or not amount:
+        return web.json_response({'error': 'user_id and amount required'}, status=400)
+    
+    try:
+        user_id = int(user_id)
+        amount = float(amount)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
+    conn.commit()
+    
+    cursor.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+    new_balance = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return web.json_response({
+        'success': True,
+        'user_id': user_id,
+        'amount_added': amount,
+        'new_balance': new_balance
+    })
+
+
 def setup_api_routes(app):
     """Настроить API маршруты"""
     app.router.add_get('/api/user', get_user_data)
     app.router.add_get('/api/subscription/links', get_subscription_links)
     app.router.add_get('/api/subscription/payment', get_payment_url)
     app.router.add_post('/api/subscription/delete', delete_subscription)
+    app.router.add_post('/api/subscription/create', create_subscription_api)
     app.router.add_get('/api/subscription/renewal', get_renewal_options)
     app.router.add_get('/api/payments', get_user_payments)
     app.router.add_get('/api/balance/topup', get_balance_topup)
@@ -742,4 +908,5 @@ def setup_api_routes(app):
     app.router.add_get('/api/admin/users', admin_get_users)
     app.router.add_get('/api/admin/subscriptions', admin_get_subscriptions)
     app.router.add_get('/api/admin/payments', admin_get_payments)
+    app.router.add_post('/api/admin/add_balance', admin_add_balance)
     logger.info("✅ API routes настроены")

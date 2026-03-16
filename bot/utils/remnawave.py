@@ -52,7 +52,8 @@ class RemnaWaveClient:
         username: str,
         traffic_limit_bytes: int = 10 * 1024 * 1024 * 1024,
         expire_days: int = 30,
-        is_disabled: bool = True
+        is_disabled: bool = True,
+        telegram_id: int = None
     ) -> dict:
         """Создать пользователя (выключен по умолчанию)"""
         from datetime import datetime, timedelta
@@ -77,6 +78,7 @@ class RemnaWaveClient:
                 vless_uuid=vless_uuid,
                 trojan_password=trojan_password,
                 ss_password=ss_password,
+                telegram_id=telegram_id,
             )
             
             response = await self.sdk.users.create_user(body=body)
@@ -154,7 +156,8 @@ async def create_vpn_user(
     username: str,
     traffic_limit_bytes: int,
     expire_days: int,
-    is_disabled: bool = True
+    is_disabled: bool = True,
+    telegram_id: int = None
 ) -> dict:
     """Создать VPN пользователя"""
     client = RemnaWaveClient()
@@ -162,7 +165,8 @@ async def create_vpn_user(
         username=username,
         traffic_limit_bytes=traffic_limit_bytes,
         expire_days=expire_days,
-        is_disabled=is_disabled
+        is_disabled=is_disabled,
+        telegram_id=telegram_id
     )
 
 
