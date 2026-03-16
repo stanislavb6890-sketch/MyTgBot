@@ -5,12 +5,32 @@ from aiohttp import web
 import hashlib
 import hmac
 import json
+import subprocess
 from bot.utils.database import confirm_payment, activate_subscription, get_subscription_by_uuid, get_db_connection
 from bot.utils.remnawave import enable_vpn_user
 from config import YOOMONEY_SECRET
 import asyncio
 
 router = Router()
+
+
+def send_notification_async(notification_func, *args):
+    """Отправить уведомление асинхронно через subprocess"""
+    try:
+        import json
+        args_json = json.dumps(args, default=str)
+        subprocess.Popen([
+            'python3', '-c', f'''
+import asyncio
+import sys
+sys.path.insert(0, "/root/.openclaw/workspace/vpn-bot")
+asyncio.run({notification_func}(*{args_json}))
+'''
+        ], cwd='/root/.openclaw/workspace/vpn-bot', 
+           stdout=subprocess.DEVNULL, 
+           stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Ошибка отправки уведомления: {e}")
 
 # === Webhook для ЮMoney ===
 async def yoomoney_webhook(request):
@@ -81,11 +101,55 @@ async def yoomoney_webhook(request):
                     conn.commit()
                     conn.close()
                     
+                    # Отправляем уведомление о пополнении баланса
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT telegram_id, balance FROM users WHERE id = ?", (user_id,))
+                    user_row = cursor.fetchone()
+                    if user_row:
+                        telegram_id, new_balance = user_row
+                        send_notification_async(
+                            "notify_balance_topup", 
+                            telegram_id, 
+                            amount, 
+                            new_balance
+                        )
+                    
                     print(f"✅ Баланс пополнен: user_id={user_id}, amount={amount}")
             else:
                 # Оплата подписки
                 payment_id = int(label)
                 confirm_payment(payment_id, notification_id)
+                
+                # Получаем данные платежа и подписки для уведомления
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT p.user_id, p.amount, s.id, s.expires_at, s.traffic_limit_bytes, s.devices_limit, u.telegram_id, u.balance
+                    FROM payments p
+                    JOIN subscriptions s ON p.subscription_id = s.id
+                    JOIN users u ON p.user_id = u.id
+                    WHERE p.id = ?
+                """, (payment_id,))
+                row = cursor.fetchone()
+                conn.close()
+                
+                if row:
+                    user_id, amount, sub_id, expires_at, traffic_bytes, devices, telegram_id, balance = row
+                    traffic_gb = traffic_bytes / (1024**3) if traffic_bytes else 0
+                    
+                    # Отправляем уведомление об успешной оплате
+                    send_notification_async(
+                        "notify_payment_success",
+                        telegram_id,
+                        {
+                            "id": sub_id,
+                            "expires_at": expires_at,
+                            "traffic_limit": traffic_gb,
+                            "devices": devices
+                        },
+                        balance
+                    )
+                
                 print(f"✅ Платёж подтверждён: {payment_id}")
         
         return web.Response(text="OK")

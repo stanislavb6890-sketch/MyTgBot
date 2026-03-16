@@ -567,9 +567,19 @@ async def create_subscription_api(request):
         vpn_username = f"user{telegram_id}_{purchase_count:03d}"
     
     # Рассчитываем цену по формуле Mini App
-    # 4.5₽ × дни + 2₽ × GB + 25₽ × устройства + 45₽ × серверы
+    # Множитель = количество сбросов (ceil(дней / интервал))
+    # 4.5₽ × дни + 2₽ × GB × сбросы + 25₽ × устройства + 45₽ × серверы
+    
+    # Интервал сброса
+    reset_intervals = {'no_reset': 999999, 'daily': 1, 'weekly': 7, 'monthly': 30}
+    interval = reset_intervals.get(traffic_reset, 30)
+    
+    # Количество сбросов = ceil(дней / интервал)
+    import math
+    reset_count = math.ceil(days / interval) if interval < 999999 else 1
+    
     servers_count = len(servers)
-    base_price = days * 4.5 + traffic * 2 + devices * 25 + servers_count * 45
+    base_price = days * 4.5 + traffic * 2 * reset_count + devices * 25 + servers_count * 45
     
     # Скидка за период
     discount = 1
@@ -847,7 +857,8 @@ async def get_renewal_options(request):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT s.duration_days, s.traffic_limit_bytes, s.devices_limit
+        SELECT s.duration_days, s.traffic_limit_bytes, s.devices_limit, s.reset_type,
+               (SELECT COUNT(*) FROM subscription_servers WHERE subscription_id = s.id) as servers_count
         FROM subscriptions s
         WHERE s.id = ?
     """, (sub_id,))
@@ -858,22 +869,250 @@ async def get_renewal_options(request):
     if not row:
         return web.json_response({'error': 'subscription not found'}, status=404)
     
-    duration_days, traffic_limit, devices = row
+    duration_days, traffic_bytes, devices, reset_type, servers_count = row
+    traffic_gb = traffic_bytes / (1024**3) if traffic_bytes else 10
     
-    # Базовая цена за день
-    price_per_day = 5
+    # Интервалы reset
+    reset_intervals = {
+        'NO_RESET': 999999,
+        'DAY': 1,
+        'WEEK': 7,
+        'MONTH': 30,
+        'none': 999999
+    }
+    interval = reset_intervals.get(reset_type, 30)
     
-    # Варианты продления
-    options = [
-        {'days': 30, 'name': '1 месяц', 'price': int(duration_days * price_per_day)},
-        {'days': 90, 'name': '3 месяца', 'price': int(duration_days * price_per_day * 2.8)},
-        {'days': 180, 'name': '6 месяцев', 'price': int(duration_days * price_per_day * 5)},
-        {'days': 365, 'name': '1 год', 'price': int(duration_days * price_per_day * 9)},
-    ]
+    # Варианты продления с правильным расчётом цены
+    import math
+    options = []
+    for days in [30, 90, 180, 365]:
+        # Количество сбросов = ceil(дней / интервал)
+        reset_count = math.ceil(days / interval) if interval < 999999 else 1
+        
+        # Базовая цена: 4.5₽ × дни + 2₽ × GB × сбросы + 25₽ × устройства + 45₽ × серверы
+        base_price = days * 4.5 + traffic_gb * 2 * reset_count + devices * 25 + servers_count * 45
+        
+        # Скидка за период
+        discount = 1
+        if days >= 365:
+            discount = 0.7
+        elif days >= 180:
+            discount = 0.8
+        elif days >= 90:
+            discount = 0.85
+        
+        price = round(base_price * discount)
+        
+        name = {30: '1 месяц', 90: '3 месяца', 180: '6 месяцев', 365: '1 год'}[days]
+        options.append({
+            'days': days, 
+            'name': name, 
+            'price': price,
+            'traffic': traffic_gb,
+            'devices': devices
+        })
     
     return web.json_response({
         'sub_id': int(sub_id),
-        'options': options
+        'options': options,
+        'current': {
+            'traffic': traffic_gb,
+            'devices': devices,
+            'reset_type': reset_type
+        }
+    })
+
+
+async def renew_subscription(request):
+    """Продлить подписку"""
+    import asyncio
+    from datetime import datetime, timedelta
+    
+    telegram_id = request.query.get('telegram_id') or request.query.get('user_id')
+    sub_id = request.query.get('sub_id')
+    days = int(request.query.get('days', '30'))
+    traffic = int(request.query.get('traffic', '10'))
+    devices = int(request.query.get('devices', '1'))
+    servers_param = request.query.get('servers', '')
+    servers = servers_param.split(',') if servers_param else []
+    traffic_reset_param = request.query.get('traffic_reset', 'monthly')
+    
+    if not telegram_id or not sub_id:
+        return web.json_response({'error': 'telegram_id and sub_id required'}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id)
+        sub_id = int(sub_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid parameters'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Получаем пользователя
+    cursor.execute("SELECT id, balance FROM users WHERE telegram_id = ?", (telegram_id,))
+    user_row = cursor.fetchone()
+    
+    if not user_row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user_id, balance = user_row
+    
+    # Получаем текущую подписку
+    cursor.execute("""
+        SELECT expires_at, reset_type, traffic_limit_bytes, devices_limit, 
+               remnawave_uuid, status, is_paid
+        FROM subscriptions 
+        WHERE id = ? AND user_id = ?
+    """, (sub_id, user_id))
+    sub_row = cursor.fetchone()
+    
+    if not sub_row:
+        conn.close()
+        return web.json_response({'error': 'subscription not found'}, status=404)
+    
+    expires_at, current_reset, current_traffic, current_devices, uuid, status, is_paid = sub_row
+    
+    # Проверяем, что подписка активна
+    if status != 'active':
+        conn.close()
+        return web.json_response({'error': 'subscription not active'}, status=400)
+    
+    # Маппинг reset типа
+    traffic_reset_map = {
+        'no_reset': 'NO_RESET',
+        'daily': 'DAY',
+        'weekly': 'WEEK',
+        'monthly': 'MONTH'
+    }
+    traffic_reset = traffic_reset_map.get(traffic_reset_param, 'MONTH')
+    
+    # Рассчитываем цену с учётом traffic_reset
+    reset_intervals = {
+        'no_reset': 999999,
+        'daily': 1,
+        'weekly': 7,
+        'monthly': 30
+    }
+    interval = reset_intervals.get(traffic_reset_param, 30)
+    
+    # Количество сбросов = ceil(дней / интервал)
+    import math
+    reset_count = math.ceil(days / interval) if interval < 999999 else 1
+    
+    # Базовая цена: 4.5₽ × дни + 2₽ × GB × сбросы + 25₽ × устройства + 45₽ × серверы
+    servers_count = len(servers) if servers else 1
+    base_price = days * 4.5 + traffic * 2 * reset_count + devices * 25 + servers_count * 45
+    
+    # Скидка за период
+    discount = 1
+    if days >= 365:
+        discount = 0.7
+    elif days >= 180:
+        discount = 0.8
+    elif days >= 90:
+        discount = 0.85
+    
+    price = round(base_price * discount)
+    
+    # Проверяем баланс
+    if balance < price:
+        conn.close()
+        return web.json_response({
+            'error': 'insufficient balance', 
+            'required': price, 
+            'available': balance
+        }, status=400)
+    
+    # Списываем баланс
+    cursor.execute("UPDATE users SET balance = balance - ? WHERE id = ?", (price, user_id))
+    
+    # Вычисляем новую дату окончания
+    current_expires = datetime.fromisoformat(expires_at) if expires_at else datetime.now()
+    new_expires = current_expires + timedelta(days=days)
+    
+    # Обновляем подписку в БД
+    cursor.execute("""
+        UPDATE subscriptions 
+        SET expires_at = ?, 
+            traffic_limit_bytes = ?,
+            devices_limit = ?,
+            reset_type = ?,
+            price = price + ?
+        WHERE id = ?
+    """, (
+        new_expires.isoformat(),
+        traffic * (1024**3),
+        devices,
+        traffic_reset,
+        price,
+        sub_id
+    ))
+    
+    # Обновляем серверы (удаляем старые, добавляем новые)
+    cursor.execute("DELETE FROM subscription_servers WHERE subscription_id = ?", (sub_id,))
+    
+    server_names = {
+        'UK': 'UK - Server',
+        'NL': 'NL - Server',
+        'FI': 'FI - Server',
+        'RU': 'Russia',
+        'DE': 'Germany'
+    }
+    
+    for server_code in servers:
+        server_name = server_names.get(server_code, server_code)
+        cursor.execute("""
+            INSERT INTO subscription_servers (subscription_id, node_uuid, node_name, country_code)
+            VALUES (?, ?, ?, ?)
+        """, (sub_id, server_code, server_name, server_code))
+    
+    conn.commit()
+    conn.close()
+    
+    # Обновляем в RemnaWave
+    try:
+        from bot.utils.remnawave import update_vpn_user
+        await update_vpn_user(
+            uuid=uuid,
+            expire_days=days,
+            traffic_limit_bytes=traffic * (1024**3),
+            traffic_reset=traffic_reset,
+            devices_limit=devices
+        )
+    except Exception as e:
+        logger.error(f"Ошибка обновления RemnaWave: {e}")
+    
+    # Отправляем уведомление
+    try:
+        import subprocess
+        subprocess.Popen([
+            'python3', '-c', f'''
+import asyncio
+import sys
+sys.path.insert(0, "/root/.openclaw/workspace/vpn-bot")
+from bot.utils.notifications import notify_payment_success
+asyncio.run(notify_payment_success({telegram_id}, {{
+    "id": {sub_id},
+    "expires_at": "{new_expires.isoformat()}",
+    "traffic_limit": {traffic},
+    "devices": {devices}
+}}, {balance - price}))
+'''
+        ], cwd='/root/.openclaw/workspace/vpn-bot',
+           stdout=subprocess.DEVNULL,
+           stderr=subprocess.DEVNULL)
+    except Exception as e:
+        logger.error(f"Ошибка отправки уведомления: {e}")
+    
+    return web.json_response({
+        'success': True,
+        'sub_id': sub_id,
+        'days_added': days,
+        'new_expires': new_expires.isoformat(),
+        'price': price,
+        'remaining_balance': balance - price
     })
 
 
@@ -1213,6 +1452,8 @@ async def get_referral_info(request):
         'referral_code': referral_code,
         'referral_bonus': referral_bonus,
         'referral_count': referral_count,
+        'total_referrals': referral_count,
+        'total_earned': referral_bonus,
         'referrals': referrals
     })
 
@@ -1417,8 +1658,18 @@ async def admin_add_balance(request):
     # Отправляем уведомление о пополнении
     if telegram_id:
         try:
-            from bot.utils.notifications import notify_balance_topup
-            asyncio.create_task(notify_balance_topup(telegram_id, amount, new_balance))
+            import subprocess
+            subprocess.Popen([
+                'python3', '-c', f'''
+import asyncio
+import sys
+sys.path.insert(0, "/root/.openclaw/workspace/vpn-bot")
+from bot.utils.notifications import notify_balance_topup
+asyncio.run(notify_balance_topup({telegram_id}, {amount}, {new_balance}))
+'''
+            ], cwd='/root/.openclaw/workspace/vpn-bot',
+               stdout=subprocess.DEVNULL,
+               stderr=subprocess.DEVNULL)
         except Exception as e:
             logger.error(f"Ошибка отправки уведомления: {e}")
     
@@ -1445,6 +1696,7 @@ def setup_api_routes(app):
     app.router.add_post('/api/subscription/create', create_subscription_api)
     app.router.add_post('/api/subscription/trial', create_trial_subscription)
     app.router.add_get('/api/subscription/renewal', get_renewal_options)
+    app.router.add_post('/api/subscription/renew', renew_subscription)
     app.router.add_get('/api/payments', get_user_payments)
     app.router.add_get('/api/balance/topup', get_balance_topup)
     app.router.add_post('/api/subscription/pay', pay_with_balance)

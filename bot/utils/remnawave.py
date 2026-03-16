@@ -194,6 +194,44 @@ async def disable_vpn_user(uuid: str):
     await client.disable_user(uuid)
 
 
+async def update_vpn_user(
+    uuid: str,
+    expire_days: int = None,
+    traffic_limit_bytes: int = None,
+    traffic_reset: str = "MONTH",
+    devices_limit: int = None
+):
+    """Обновить параметры VPN пользователя"""
+    from datetime import datetime, timedelta
+    
+    client = RemnaWaveClient()
+    
+    # Маппинг traffic_reset на стратегию RemnaWave
+    reset_strategy_map = {
+        'NO_RESET': 'NO_RESET',
+        'DAY': 'DAY',
+        'WEEK': 'WEEK',
+        'MONTH': 'MONTH',
+        'no_reset': 'NO_RESET',
+        'daily': 'DAY',
+        'weekly': 'WEEK',
+        'monthly': 'MONTH'
+    }
+    reset_strategy = reset_strategy_map.get(traffic_reset.upper() if traffic_reset else 'MONTH', 'MONTH')
+    
+    # Вычисляем expire_at если переданы дни
+    expire_at = None
+    if expire_days:
+        expire_at = (datetime.now() + timedelta(days=expire_days)).isoformat()
+    
+    await client.update_user(
+        uuid=uuid,
+        traffic_limit_bytes=traffic_limit_bytes,
+        expire_at=expire_at,
+        traffic_limit_strategy=reset_strategy
+    )
+
+
 async def get_all_nodes() -> list:
     """Получить все ноды"""
     client = RemnaWaveClient()

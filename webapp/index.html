@@ -20,6 +20,7 @@
             --danger: #f87171;
             --success: #22d3ee;
             --warning: #fbbf24;
+            --error: #f87171;
             --border: #27272a;
             --radius: 12px;
             --shadow: 0 4px 24px rgba(0,0,0,0.4);
@@ -657,6 +658,10 @@
             <span class="icon">📱</span>
             <span>Подписки</span>
         </div>
+        <div class="nav-item" data-page="referrals">
+            <span class="icon">👥</span>
+            <span>Рефералы</span>
+        </div>
         <div class="nav-item" data-page="profile">
             <span class="icon">👤</span>
             <span>Профиль</span>
@@ -1130,8 +1135,48 @@
         }
         
         async function renewSubscription(subId, days) {
-            // Пока просто переходим на оплату с новой суммой
-            tg.showAlert('Скоро! Продление на ' + days + ' дней');
+            // Получаем текущие параметры подписки и варианты продления
+            try {
+                const response = await fetch(`${API_BASE}/api/subscription/renewal?sub_id=${subId}`);
+                const data = await response.json();
+                
+                if (!data.options) {
+                    tg.showAlert('❌ Ошибка получения данных');
+                    return;
+                }
+                
+                // Находим выбранный вариант
+                const selectedOpt = data.options.find(o => o.days === days);
+                if (!selectedOpt) {
+                    tg.showAlert('❌ Вариант не найден');
+                    return;
+                }
+                
+                const price = selectedOpt.price;
+                const traffic = selectedOpt.traffic || 10;
+                const devices = selectedOpt.devices || 1;
+                
+                // Показываем информацию и делаем запрос
+                tg.showAlert(`⏳ Продление подписки #${subId} на ${days} дней за ${price}₽...`);
+                
+                // Вызываем API продления
+                const renewResponse = await fetch(
+                    `${API_BASE}/api/subscription/renew?sub_id=${subId}&user_id=${telegramId}&days=${days}&traffic=${traffic}&devices=${devices}`,
+                    { method: 'POST' }
+                );
+                const result = await renewResponse.json();
+                
+                if (result.success) {
+                    tg.showAlert(`✅ Подписка продлена!\n\nДней добавлено: ${result.days_added}\nНовый баланс: ${result.remaining_balance}₽`);
+                    // Обновляем данные
+                    await loadData();
+                    renderSubscriptionDetail();
+                } else {
+                    tg.showAlert('❌ ' + (result.error || 'Ошибка продления'));
+                }
+            } catch (e) {
+                tg.showAlert('❌ Ошибка: ' + e.message);
+            }
         }
         
         async function deleteSubscription(subId) {
@@ -1191,6 +1236,8 @@
                     renderSubscriptions();
                 } else if (page === 'create') {
                     renderCreateTariff();
+                } else if (page === 'referrals') {
+                    renderReferrals();
                 } else if (page === 'profile') {
                     renderProfile();
                 } else if (page === 'payments') {
@@ -1200,6 +1247,110 @@
                 }
             });
         });
+        
+        async function renderReferrals() {
+            const content = document.getElementById('content');
+            currentPage = 'referrals';
+            
+            let tid = null;
+            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                tid = tg.initDataUnsafe.user.id;
+            }
+            if (!tid) {
+                const params = new URLSearchParams(window.location.search);
+                tid = params.get('user_id') || params.get('telegram_id');
+            }
+            
+            content.innerHTML = `
+                <div class="section-title">👥 Реферальная программа</div>
+                <div id="referral-page-content">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            `;
+            
+            loadReferralPage(tid);
+        }
+        
+        async function loadReferralPage(tid) {
+            const content = document.getElementById('referral-page-content');
+            
+            if (!tid) {
+                content.innerHTML = '<div style="padding: 16px; color: var(--text-secondary);">Ошибка: не найден ID</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/referral?user_id=${tid}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    content.innerHTML = '<div style="padding: 16px; color: var(--error);">' + data.error + '</div>';
+                    return;
+                }
+                
+                const refCode = data.referral_code || 'нет';
+                const botUsername = 'cloaknetvbot';
+                // Формат: ?start=refTELEGRAM_ID
+                const refLink = `https://t.me/${botUsername}?start=ref${tid}`;
+                
+                let html = `
+                    <div class="subscription-card" style="margin-bottom: 16px;">
+                        <div class="sub-header">
+                            <span style="font-weight: 600;">🎁 Ваша реферальная ссылка</span>
+                        </div>
+                        <div style="text-align: center; padding: 20px 0;">
+                            <div style="font-size: 28px; font-weight: 700; color: var(--accent); letter-spacing: 2px;">ref${tid}</div>
+                            <div style="margin-top: 12px;">
+                                <button onclick="copyReferralLink('${refLink}')" style="padding: 10px 20px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                    📋 Копировать ссылку
+                                </button>
+                            </div>
+                            <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                                За каждого приглашённого: 5% + 3% + 1%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="label">Всего рефералов</div>
+                            <div class="value">${data.total_referrals || 0}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Заработано</div>
+                            <div class="value" style="color: var(--accent);">${(data.total_earned || 0).toFixed(0)}₽</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Уровень 1
+                if (data.referrals && data.referrals.length > 0) {
+                    html += `<div class="section-title" style="margin-top: 16px;">🎯 Уровень 1 (5%)</div>`;
+                    data.referrals.forEach(ref => {
+                        html += `
+                            <div class="subscription-card" style="margin-bottom: 8px;">
+                                <div class="sub-header">
+                                    <span>${ref.first_name || ref.username || 'User'}</span>
+                                    <span style="color: var(--accent);">+${ref.bonus?.toFixed(0) || 0}₽</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                content.innerHTML = html;
+            } catch (e) {
+                content.innerHTML = '<div style="padding: 16px; color: var(--error);">Ошибка загрузки: ' + e.message + '</div>';
+            }
+        }
+        
+        function copyReferralLink(link) {
+            navigator.clipboard.writeText(link).then(() => {
+                tg.showAlert('✅ Ссылка скопирована!\n\n' + link);
+            }).catch(() => {
+                tg.showAlert('📋 Ссылка:\n\n' + link);
+            });
+        }
         
         function renderProfile() {
             const content = document.getElementById('content');
@@ -1248,15 +1399,86 @@
                     </div>
                 </div>
                 
-                <div class="section-title">🎁 Реферальная программа</div>
+                <div class="section-title">💳 История платежей</div>
                 
-                <div id="referral-content">
+                <div id="payments-content">
                     <div class="loading">Загрузка...</div>
                 </div>
             `;
             
-            // Загружаем реферальную информацию
-            loadReferralInfo();
+            // Загружаем историю платежей
+            loadPaymentsHistory();
+        }
+        
+        async function loadPaymentsHistory() {
+            const content = document.getElementById('payments-content');
+            
+            // Get telegramId
+            let tid = null;
+            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                tid = tg.initDataUnsafe.user.id;
+            }
+            if (!tid) {
+                const params = new URLSearchParams(window.location.search);
+                tid = params.get('user_id') || params.get('telegram_id');
+            }
+            
+            if (!tid) {
+                content.innerHTML = '<div style="padding: 16px; color: var(--text-secondary);">Ошибка: не найден ID</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/payments?user_id=${tid}`);
+                const data = await response.json();
+                
+                if (!data.payments || data.payments.length === 0) {
+                    content.innerHTML = '<div style="padding: 16px; color: var(--text-secondary);">Платежей пока нет</div>';
+                    return;
+                }
+                
+                let html = '';
+                data.payments.forEach(payment => {
+                    const date = new Date(payment.created_at).toLocaleDateString('ru-RU');
+                    const statusColors = {
+                        'pending': 'var(--warning)',
+                        'paid': 'var(--success)',
+                        'succeeded': 'var(--success)',
+                        'failed': 'var(--error)'
+                    };
+                    const statusLabels = {
+                        'pending': '⏳ Ожидание',
+                        'paid': '✅ Оплачен',
+                        'succeeded': '✅ Оплачен',
+                        'failed': '❌ Ошибка'
+                    };
+                    const statusColor = statusColors[payment.status] || 'var(--text-secondary)';
+                    const statusLabel = statusLabels[payment.status] || payment.status;
+                    
+                    html += `
+                        <div class="subscription-card" style="margin-bottom: 8px;">
+                            <div class="sub-header">
+                                <span style="font-weight: 600;">💰 ${payment.amount}₽</span>
+                                <span style="color: ${statusColor}; font-size: 12px;">${statusLabel}</span>
+                            </div>
+                            <div class="sub-info" style="margin-top: 8px;">
+                                <div class="sub-info-item">
+                                    <div class="label">Дата</div>
+                                    <div class="value">${date}</div>
+                                </div>
+                                <div class="sub-info-item">
+                                    <div class="label">ID</div>
+                                    <div class="value">#${payment.id}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content.innerHTML = html;
+            } catch (e) {
+                content.innerHTML = '<div style="padding: 16px; color: var(--error);">Ошибка загрузки</div>';
+            }
         }
         
         async function loadReferralInfo() {
@@ -1679,9 +1901,17 @@
             
             const interval = resetIntervals[createData.traffic_reset] || 30;
             
-            // Коэффициент = сколько раз сбросится за период
-            let multiplier = Math.max(1, createData.days / interval);
-            multiplier = Math.round(multiplier * 10) / 10;
+            // Количество сбросов = ceil(дней / интервал)
+            // Например: 10 дней / 7 = 1.43 → 2 сброса (на 7й и 14й день, но 14й за пределами)
+            let resetCount = Math.ceil(createData.days / interval);
+            if (interval === 999999) resetCount = 1; // no_reset = 1 "сброс" (то есть сброса нет)
+            
+            // Множитель трафика = 1 + количество сбросов
+            // Если сброса нет (no_reset) = 1
+            // Если daily 10 дней = 1 + 10 = 11 раз
+            // Если weekly 10 дней = 1 + 2 = 3 (сброс на 7й день)
+            const trafficMultiplier = (createData.traffic_reset === 'no_reset') ? 1 : (1 + resetCount - 1);
+            const actualResets = (createData.traffic_reset === 'no_reset') ? 1 : resetCount;
             
             // Скидка за период
             let discount = 1;
@@ -1694,17 +1924,17 @@
             }
             
             // Базовая цена:
-            // 4.5₽ × дни + 2₽ × GB + 25₽ × устр + 45₽ × серверы
+            // 4.5₽ × дни + 2₽ × GB × количество_сбросов + 25₽ × устр + 45₽ × серверы
             const serversCount = createData.servers.length || 1;
             const basePrice = (
                 createData.days * 4.5 + 
-                createData.traffic * 2 + 
+                createData.traffic * 2 * actualResets +  // реальное количество сбросов!
                 createData.devices * 25 + 
                 serversCount * 45
             );
             
-            // Применяем коэффициент сброса и скидку
-            return Math.round(basePrice * multiplier * discount);
+            // Применяем скидку
+            return Math.round(basePrice * discount);
         }
         
         async function createTrial() {

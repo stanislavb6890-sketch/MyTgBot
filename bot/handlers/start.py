@@ -9,18 +9,27 @@ import re
 router = Router()
 
 
-@router.message(F.text == "/start")
+@router.message(F.text.startswith("/start"))
 async def cmd_start(message: Message):
-    """Обработка /start"""
+    """Обработка /start с параметрами"""
     telegram_id = message.from_user.id
     username = message.from_user.username
     first_name = message.from_user.first_name or "друг"
     
-    # Проверяем реферальный код
+    # Проверяем реферальный код (только формат: /start refTELEGRAM_ID)
     text = message.text
     referrer_code = None
-    if text and text.startswith("/start "):
-        referrer_code = text.replace("/start ", "").strip()
+    print(f"📨 Получен /start: '{text}'")
+    if text and text.startswith("/start ref"):
+        referrer_code = text.replace("/start ref", "").strip()
+        print(f"🔗 Реферальный код: '{referrer_code}'")
+        if referrer_code.isdigit():
+            print(f"✅ Это цифры: {referrer_code}")
+        else:
+            print(f"❌ Не цифры: {referrer_code}")
+            referrer_code = None
+    else:
+        print(f"❌ Неверный формат /start")
     
     # Создаём/получаем пользователя
     user_id = get_or_create_user(telegram_id, username, first_name)
@@ -34,9 +43,9 @@ async def cmd_start(message: Message):
         cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         
-        if row and row[0] is None:
-            # Ищем реферера по коду
-            cursor.execute("SELECT id FROM users WHERE referral_code = ?", (referrer_code,))
+        if row and row[0] is None and referrer_code:
+            # referrer_code - это telegram_id реферера
+            cursor.execute("SELECT id FROM users WHERE telegram_id = ?", (referrer_code,))
             referrer_row = cursor.fetchone()
             
             if referrer_row:
