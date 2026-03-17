@@ -449,8 +449,10 @@ async def get_payment_url(request):
         return web.json_response({'error': 'subscription already paid'}, status=400)
     
     # Генерируем ссылку на оплату (нужный кошелёк)
-    from config import YOOMONEY_WALLET
-    payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub_id}"
+    from config import YOOMONEY_WALLET, WEBHOOK_URL
+    # URL для возврата после оплаты
+    return_url = f"{WEBHOOK_URL.replace('/webhook/yoomoney', '')}/miniapp"
+    payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub_id}&successURL={return_url}"
     
     return web.json_response({
         'sub_id': sub_id,
@@ -1190,10 +1192,12 @@ async def get_balance_topup(request):
     user_id = row[0]
     
     # Создаём label для пополнения: topup_{user_id}_{amount}
-    from config import YOOMONEY_WALLET
+    from config import YOOMONEY_WALLET, WEBHOOK_URL
     label = f"topup_{user_id}_{amount}"
     
-    payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={amount}&label={label}"
+    # URL для возврата после оплаты
+    return_url = f"{WEBHOOK_URL.replace('/webhook/yoomoney', '')}/miniapp"
+    payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={amount}&label={label}&successURL={return_url}"
     
     return web.json_response({
         'payment_url': payment_url,
