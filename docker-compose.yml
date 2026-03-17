@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  vpn-bot:
+    build: .
+    container_name: cloaknet-vpn-bot
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - REMNAWAVE_URL=${REMNAWAVE_URL}
+      - REMNAWAVE_TOKEN=${REMNAWAVE_TOKEN}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - YOOMONEY_SECRET=${YOOMONEY_SECRET}
+      - ADMIN_ID=${ADMIN_ID}
+    volumes:
+      - ./vpn_bot.db:/app/vpn_bot.db
+      - ./bot.log:/app/bot.log
+    networks:
+      - vpn-network
+
+networks:
+  vpn-network:
+    driver: bridge
