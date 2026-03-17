@@ -10,6 +10,7 @@ from bot.utils.database import confirm_payment, activate_subscription, get_subsc
 from bot.utils.remnawave import enable_vpn_user
 from config import YOOMONEY_SECRET
 import asyncio
+import logging
 
 router = Router()
 
@@ -67,10 +68,19 @@ async def yoomoney_webhook(request):
         
         # Проверяем подпись
         if YOOMONEY_SECRET:
+            # Получаем подпись из заголовка
+            signature = request.headers.get('X-Yoomoney-Signature', '')
+            
             # Формируем строку для подписи
             params = f"{notification_type}&{amount}&{currency}&{YOOMONEY_SECRET}&{label}"
-            sha = hashlib.sha256(params.encode()).hexdigest()
-            # TODO: Проверить подпись полностью
+            expected_sha = hashlib.sha256(params.encode()).hexdigest()
+            
+            # Проверяем подпись
+            if signature and signature != expected_sha:
+                logger.warning(f"❌ Неверная подпись webhook! Ожидалась: {expected_sha}, получена: {signature}")
+                return web.Response(text="Invalid signature", status=403)
+            
+            logger.info("✅ Подпись верифицирована")
         
         # Подтверждаем платёж
         if label and amount:
