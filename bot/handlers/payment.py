@@ -19,24 +19,41 @@ def send_notification_async(notification_func, *args):
     try:
         import json
         args_json = json.dumps(args, default=str)
+        venv_python = '/root/.openclaw/workspace/vpn-bot/venv/bin/python3'
         subprocess.Popen([
-            'python3', '-c', f'''
+            venv_python, '-c', f'''
 import asyncio
 import sys
 sys.path.insert(0, "/root/.openclaw/workspace/vpn-bot")
-asyncio.run({notification_func}(*{args_json}))
+import logging
+logging.basicConfig(level=logging.INFO)
+from bot.utils.notifications import {notification_func}
+result = asyncio.run({notification_func}(*{args_json}))
+print(f"Result: {{result}}")
 '''
         ], cwd='/root/.openclaw/workspace/vpn-bot', 
-           stdout=subprocess.DEVNULL, 
-           stderr=subprocess.DEVNULL)
+           stdout=subprocess.PIPE, 
+           stderr=subprocess.PIPE)
+        print(f"📨 Уведомление отправлено: {notification_func}")
     except Exception as e:
         print(f"Ошибка отправки уведомления: {e}")
 
 # === Webhook для ЮMoney ===
+import logging
+logger = logging.getLogger(__name__)
+
 async def yoomoney_webhook(request):
     """Обработка webhook от ЮMoney"""
+    logger.info("🔔 Webhook called!")
     try:
-        data = await request.post()
+        # Пробуем получить JSON данные
+        content_type = request.headers.get('Content-Type', '')
+        logger.info(f"   Content-Type: {content_type}")
+        
+        if 'application/json' in content_type:
+            data = await request.json()
+        else:
+            data = await request.post()
         
         # Получаем данные
         notification_type = data.get("notification_type")
@@ -45,7 +62,8 @@ async def yoomoney_webhook(request):
         label = data.get("label")  # ID платежа в нашей системе
         notification_id = data.get("notification_id")
         
-        print(f"💰 ЮMoney webhook: {notification_type}, amount={amount}, label={label}")
+        print(f"💰 ЮMoney webhook: notification_type={notification_type}, amount={amount}, currency={currency}, label={label}")
+        print(f"   Raw data: {data}")
         
         # Проверяем подпись
         if YOOMONEY_SECRET:
@@ -98,13 +116,14 @@ async def yoomoney_webhook(request):
                                 cursor.execute("UPDATE users SET referral_bonus = referral_bonus + ?, balance = balance + ? WHERE id = ?",
                                             (bonus_level3, bonus_level3, level3_row[0]))
                     
+                    # Получаем данные для уведомления ДО закрытия соединения
+                    cursor.execute("SELECT telegram_id, balance FROM users WHERE id = ?", (user_id,))
+                    user_row = cursor.fetchone()
+                    
                     conn.commit()
                     conn.close()
                     
                     # Отправляем уведомление о пополнении баланса
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT telegram_id, balance FROM users WHERE id = ?", (user_id,))
-                    user_row = cursor.fetchone()
                     if user_row:
                         telegram_id, new_balance = user_row
                         send_notification_async(
@@ -116,25 +135,35 @@ async def yoomoney_webhook(request):
                     
                     print(f"✅ Баланс пополнен: user_id={user_id}, amount={amount}")
             else:
-                # Оплата подписки
-                payment_id = int(label)
-                confirm_payment(payment_id, notification_id)
+                # Оплата подписки (label = subscription_id)
+                sub_id = int(label)
+                amount = float(amount)
                 
-                # Получаем данные платежа и подписки для уведомления
                 conn = get_db_connection()
                 cursor = conn.cursor()
+                
+                # Получаем данные подписки
                 cursor.execute("""
-                    SELECT p.user_id, p.amount, s.id, s.expires_at, s.traffic_limit_bytes, s.devices_limit, u.telegram_id, u.balance
-                    FROM payments p
-                    JOIN subscriptions s ON p.subscription_id = s.id
-                    JOIN users u ON p.user_id = u.id
-                    WHERE p.id = ?
-                """, (payment_id,))
+                    SELECT s.user_id, s.expires_at, s.traffic_limit_bytes, s.devices_limit, u.telegram_id, u.balance
+                    FROM subscriptions s
+                    JOIN users u ON s.user_id = u.id
+                    WHERE s.id = ?
+                """, (sub_id,))
                 row = cursor.fetchone()
-                conn.close()
                 
                 if row:
-                    user_id, amount, sub_id, expires_at, traffic_bytes, devices, telegram_id, balance = row
+                    user_id, expires_at, traffic_bytes, devices, telegram_id, balance = row
+                    
+                    # Обновляем подписку как оплаченную
+                    cursor.execute("""
+                        UPDATE subscriptions 
+                        SET is_paid = 1, paid_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    """, (sub_id,))
+                    
+                    conn.commit()
+                    conn.close()
+                    
                     traffic_gb = traffic_bytes / (1024**3) if traffic_bytes else 0
                     
                     # Отправляем уведомление об успешной оплате
@@ -149,8 +178,11 @@ async def yoomoney_webhook(request):
                         },
                         balance
                     )
-                
-                print(f"✅ Платёж подтверждён: {payment_id}")
+                    
+                    print(f"✅ Подписка оплачена: sub_id={sub_id}, amount={amount}")
+                else:
+                    conn.close()
+                    print(f"❌ Подписка не найдена: sub_id={sub_id}")
         
         return web.Response(text="OK")
     

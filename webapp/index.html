@@ -8,11 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #141414;
-            --bg-card: #1c1c1c;
+            --bg-primary: #09090b;
+            --bg-secondary: #18181b;
+            --bg-card: #27272a;
             --accent: #22d3ee;
-            --accent-hover: #06b6d4;
+            --accent-hover: #67e8f9;
             --accent-muted: #164e63;
             --text-primary: #fafafa;
             --text-secondary: #a1a1aa;
@@ -21,9 +21,9 @@
             --success: #22d3ee;
             --warning: #fbbf24;
             --error: #f87171;
-            --border: #27272a;
+            --border: #3f3f46;
             --radius: 12px;
-            --shadow: 0 4px 24px rgba(0,0,0,0.4);
+            --shadow: 0 4px 24px rgba(0,0,0,0.6);
         }
         
         * {
@@ -112,6 +112,7 @@
             padding: 16px;
             margin-bottom: 12px;
             border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
@@ -121,7 +122,7 @@
         .subscription-card:hover {
             border-color: var(--accent);
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 212, 170, 0.15);
+            box-shadow: 0 8px 24px rgba(6, 182, 212, 0.15);
         }
         
         .subscription-card:active {
@@ -559,7 +560,7 @@
         }
         
         .traffic-bar {
-            background: var(--bg-secondary);
+            background: #e2e8f0;
             border-radius: 10px;
             height: 14px;
             margin-top: 8px;
@@ -798,7 +799,7 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.payment_url) {
-                        window.location.href = data.payment_url;
+                        tg.openLink(data.payment_url);
                     } else {
                         alert('Ошибка: ' + (data.error || 'Unknown'));
                     }
@@ -929,25 +930,16 @@
                             <span class="sub-status ${isActive ? 'active' : 'inactive'}">${statusText}</span>
                         </div>
                         
-                        <div style="color: var(--text-secondary); font-size: 13px; margin-top: 8px;">
-                            📅 до ${formatDate(sub.expires_at)}
-                        </div>
-                        
                         <div style="margin-top: 8px;">
                             <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
                                 <span>⏰ Осталось</span>
                                 <span>${daysLeft} дней</span>
                             </div>
                             <div class="traffic-bar" style="height: 14px;">
-                                <div class="traffic-fill" style="width: ${Math.max(0, Math.min(100, (1 - daysLeft/30) * 100))}%; background: ${daysLeft < 7 ? 'var(--danger)' : 'var(--accent)'};"></div>
+                                <div class="traffic-fill" style="width: ${Math.max(0, Math.min(100, (1 - daysLeft/sub.duration_days) * 100))}%; background: ${daysLeft < 7 ? 'var(--danger)' : 'var(--accent)'};"></div>
                             </div>
                         </div>
                         
-                        <div style="display: flex; gap: 8px; margin-top: 16px;">
-                            <button class="btn btn-secondary" style="flex:1" onclick="event.stopPropagation(); showSubscriptionDetail(${sub.id})">
-                                ℹ️ Подробнее
-                            </button>
-                        </div>
                     </div>
                 `;
             });
@@ -994,7 +986,7 @@
                 const data = await response.json();
                 
                 if (data.payment_url) {
-                    window.location.href = data.payment_url;
+                    tg.openLink(data.payment_url);
                 } else {
                     tg.showAlert('❌ Не удалось получить ссылку');
                 }
@@ -1213,6 +1205,18 @@
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric'
+            });
+        }
+        
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'numeric',
+                year: 'numeric'
+            }) + ' ' + date.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
             });
         }
         

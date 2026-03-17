@@ -48,7 +48,7 @@ async def get_user_data(request):
     cursor.execute("""
         SELECT s.id, s.status, s.expires_at, s.traffic_limit_bytes, s.traffic_used_bytes,
                s.devices_limit, s.servers_count, s.is_trial, s.is_paid, s.short_uuid,
-               s.price, GROUP_CONCAT(ss.node_name, ', ') as servers
+               s.price, s.created_at, s.duration_days, GROUP_CONCAT(ss.node_name, ', ') as servers
         FROM subscriptions s
         LEFT JOIN subscription_servers ss ON s.id = ss.subscription_id
         WHERE s.user_id = ?
@@ -76,7 +76,9 @@ async def get_user_data(request):
             'is_paid': bool(row[8]),
             'short_uuid': row[9],
             'price': row[10],
-            'servers_list': row[11] or ''
+            'created_at': row[11],
+            'duration_days': row[12] or 30,
+            'servers_list': row[13] or ''
         })
     
     return web.json_response({
@@ -1384,12 +1386,13 @@ async def notify_payment(request):
     
     # Отправляем уведомление через бота
     try:
-        from bot.main import bot
-        await bot.send_message(
+        from bot.utils.notifications import send_telegram_message
+        await send_telegram_message(
             telegram_id,
             f"✅ <b>Подписка оплачена!</b>\n\n"
             f"💰 Списано: {price}₽\n\n"
-            f"Можете использовать VPN!"
+            f"Можете использовать VPN!",
+            parse_mode="HTML"
         )
     except Exception as e:
         logger.error(f"Ошибка отправки уведомления: {e}")
