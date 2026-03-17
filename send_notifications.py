@@ -15,9 +15,7 @@ import logging
 # Добавляем путь
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from aiogram import Bot
-from config import BOT_TOKEN
-from bot.utils.notifications import check_expiring_subscriptions, init_notification_db
+from bot.utils.notifications import check_expiring_subscriptions
 from bot.utils.database import init_db
 
 logging.basicConfig(
@@ -32,18 +30,12 @@ async def main():
     
     # Инициализация БД
     init_db()
-    init_notification_db()
-    
-    # Запуск бота для отправки сообщений
-    bot = Bot(token=BOT_TOKEN)
     
     try:
-        sent = await check_expiring_subscriptions(bot)
+        sent = await check_expiring_subscriptions()
         logger.info(f"✅ Отправлено уведомлений: {sent}")
     except Exception as e:
         logger.error(f"❌ Ошибка: {e}")
-    finally:
-        await bot.session.close()
 
 
 if __name__ == "__main__":

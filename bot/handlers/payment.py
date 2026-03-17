@@ -98,6 +98,12 @@ async def yoomoney_webhook(request):
                     # Начисляем баланс
                     cursor.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
                     
+                    # Записываем платёж в историю
+                    cursor.execute("""
+                        INSERT INTO payments (user_id, amount, currency, status, yoomoney_notification_id)
+                        VALUES (?, ?, 'RUB', 'paid', ?)
+                    """, (user_id, amount, notification_id))
+                    
                     # Начисляем реферальные бонусы
                     cursor.execute("SELECT referrer_id FROM users WHERE id = ?", (user_id,))
                     referrer_row = cursor.fetchone()
@@ -164,6 +170,11 @@ async def yoomoney_webhook(request):
                 if row:
                     user_id, expires_at, traffic_bytes, devices, telegram_id, balance = row
                     
+                    # Получаем remnawave_uuid для активации
+                    cursor.execute("SELECT remnawave_uuid FROM subscriptions WHERE id = ?", (sub_id,))
+                    remnawave_row = cursor.fetchone()
+                    remnawave_uuid = remnawave_row[0] if remnawave_row else None
+                    
                     # Обновляем подписку как оплаченную
                     cursor.execute("""
                         UPDATE subscriptions 
@@ -171,8 +182,31 @@ async def yoomoney_webhook(request):
                         WHERE id = ?
                     """, (sub_id,))
                     
+                    # Записываем платёж в историю
+                    cursor.execute("""
+                        INSERT INTO payments (subscription_id, user_id, amount, currency, status, yoomoney_notification_id)
+                        VALUES (?, ?, ?, 'RUB', 'paid', ?)
+                    """, (sub_id, user_id, amount, notification_id))
+                    
                     conn.commit()
                     conn.close()
+                    
+                    # Активируем пользователя в Remnawave
+                    if remnawave_uuid:
+                        try:
+                            import subprocess
+                            subprocess.run(
+                                ['/root/.openclaw/workspace/vpn-bot/venv/bin/python3', '-c', f'''
+import asyncio
+from bot.utils.remnawave import enable_vpn_user
+asyncio.run(enable_vpn_user("{remnawave_uuid}"))
+'''],
+                                capture_output=True,
+                                timeout=30
+                            )
+                            print(f"✅ VPN пользователь активирован: {remnawave_uuid}")
+                        except Exception as e:
+                            print(f"❌ Ошибка активации VPN: {e}")
                     
                     traffic_gb = traffic_bytes / (1024**3) if traffic_bytes else 0
                     

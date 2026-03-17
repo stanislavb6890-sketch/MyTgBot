@@ -325,6 +325,64 @@ async def add_subscription_traffic(request):
     })
 
 
+async def get_subscription_traffic(request):
+    """Получить актуальный трафик подписки из Remnawave"""
+    sub_id = request.query.get('sub_id')
+    
+    if not sub_id:
+        return web.json_response({'error': 'sub_id required'}, status=400)
+    
+    try:
+        sub_id = int(sub_id)
+    except ValueError:
+        return web.json_response({'error': 'invalid sub_id'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Получаем remnawave_uuid
+    cursor.execute("SELECT remnawave_uuid, traffic_limit_bytes FROM subscriptions WHERE id = ?", (sub_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'subscription not found'}, status=404)
+    
+    uuid, limit_bytes = row
+    
+    if not uuid:
+        conn.close()
+        return web.json_response({'traffic_used': 0, 'traffic_limit': limit_bytes})
+    
+    # Получаем актуальный трафик из Remnawave
+    try:
+        from remnawave import RemnawaveSDK
+        from config import REMNAWAVE_URL, REMNAWAVE_TOKEN
+        
+        sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
+        user = await sdk.users.get_user_by_uuid(uuid)
+        
+        if user and hasattr(user, 'user_traffic') and user.user_traffic:
+            bytes_used = user.user_traffic.used_traffic_bytes or 0
+            
+            # Обновляем в БД
+            cursor.execute("UPDATE subscriptions SET traffic_used_bytes = ? WHERE id = ?", (bytes_used, sub_id))
+            conn.commit()
+        else:
+            bytes_used = 0
+            
+    except Exception as e:
+        print(f"Ошибка получения трафика: {e}")
+        bytes_used = 0
+    
+    conn.close()
+    
+    return web.json_response({
+        'traffic_used': bytes_used,
+        'traffic_limit': limit_bytes
+    })
+
+
 async def add_subscription_device(request):
     """Добавить устройство к подписке"""
     telegram_id = request.query.get('user_id') or request.query.get('telegram_id')
@@ -451,7 +509,7 @@ async def get_payment_url(request):
     # Генерируем ссылку на оплату (нужный кошелёк)
     from config import YOOMONEY_WALLET, WEBHOOK_URL
     # URL для возврата после оплаты
-    return_url = f"{WEBHOOK_URL.replace('/webhook/yoomoney', '')}/miniapp"
+    return_url = f"{WEBHOOK_URL.replace('/webhook', '')}/miniapp"
     payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={price}&label={sub_id}&successURL={return_url}"
     
     return web.json_response({
@@ -1196,7 +1254,7 @@ async def get_balance_topup(request):
     label = f"topup_{user_id}_{amount}"
     
     # URL для возврата после оплаты
-    return_url = f"{WEBHOOK_URL.replace('/webhook/yoomoney', '')}/miniapp"
+    return_url = f"{WEBHOOK_URL.replace('/webhook', '')}/miniapp"
     payment_url = f"https://yoomoney.ru/quickpay/confirm?receiver={YOOMONEY_WALLET}&quickpay-form=button&paymentType=AC&sum={amount}&label={label}&successURL={return_url}"
     
     return web.json_response({
@@ -1551,6 +1609,112 @@ async def admin_get_stats(request):
     })
 
 
+async def admin_get_user_detail(request):
+    """Детали пользователя"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    user_id = request.query.get('user_id')
+    if not user_id:
+        return web.json_response({'error': 'user_id required'}, status=400)
+    
+    user_id = int(user_id)
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Данные пользователя
+    cursor.execute("""
+        SELECT id, telegram_id, username, first_name, balance, referral_bonus, 
+               referrer_id, is_active, created_at
+        FROM users WHERE id = ?
+    """, (user_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return web.json_response({'error': 'user not found'}, status=404)
+    
+    user = {
+        'id': row[0],
+        'telegram_id': row[1],
+        'username': row[2],
+        'first_name': row[3],
+        'balance': row[4],
+        'referral_bonus': row[5],
+        'referrer_id': row[6],
+        'is_blocked': not bool(row[7]) if row[7] is not None else False,
+        'created_at': row[8]
+    }
+    
+    # Подписки
+    cursor.execute("""
+        SELECT id, status, is_paid, price, expires_at, created_at,
+               traffic_limit_bytes, duration_days, devices_limit
+        FROM subscriptions WHERE user_id = ?
+        ORDER BY id DESC
+    """, (user_id,))
+    
+    subscriptions = []
+    for s in cursor.fetchall():
+        traffic_gb = (s[6] or 0) / (1024**3) if s[6] else 0
+        subscriptions.append({
+            'id': s[0],
+            'status': s[1],
+            'is_paid': bool(s[2]),
+            'price': s[3],
+            'expires_at': s[4],
+            'created_at': s[5],
+            'traffic_gb': round(traffic_gb, 1),
+            'days': s[7] or 30,
+            'devices': s[8] or 1
+        })
+    
+    # Платежи
+    cursor.execute("""
+        SELECT id, amount, currency, status, created_at
+        FROM payments WHERE user_id = ?
+        ORDER BY id DESC
+        LIMIT 20
+    """, (user_id,))
+    
+    payments = []
+    for p in cursor.fetchall():
+        payments.append({
+            'id': p[0],
+            'amount': p[1],
+            'currency': p[2],
+            'status': p[3],
+            'created_at': p[4]
+        })
+    
+    # Рефералы
+    cursor.execute("""
+        SELECT id, telegram_id, username, first_name, balance
+        FROM users WHERE referrer_id = ?
+        LIMIT 10
+    """, (user_id,))
+    
+    referrals = []
+    for r in cursor.fetchall():
+        referrals.append({
+            'id': r[0],
+            'telegram_id': r[1],
+            'username': r[2],
+            'first_name': r[3],
+            'balance': r[4]
+        })
+    
+    conn.close()
+    
+    return web.json_response({
+        'user': user,
+        'subscriptions': subscriptions,
+        'payments': payments,
+        'referrals': referrals
+    })
+
+
 async def admin_get_users(request):
     """Список пользователей"""
     admin_key = request.query.get('key')
@@ -1597,16 +1761,17 @@ async def admin_get_subscriptions(request):
     
     cursor.execute("""
         SELECT s.id, s.user_id, s.status, s.is_paid, s.price, s.expires_at, s.created_at,
-               GROUP_CONCAT(ss.node_name) as servers
+               s.traffic_limit_bytes, s.duration_days, s.devices_limit,
+               u.telegram_id, u.username, u.first_name
         FROM subscriptions s
-        LEFT JOIN subscription_servers ss ON s.id = ss.subscription_id
-        GROUP BY s.id
+        LEFT JOIN users u ON s.user_id = u.id
         ORDER BY s.id DESC
         LIMIT 100
     """)
     
     subs = []
     for row in cursor.fetchall():
+        traffic_gb = (row[7] or 0) / (1024**3) if row[7] else 0
         subs.append({
             'id': row[0],
             'user_id': row[1],
@@ -1615,7 +1780,12 @@ async def admin_get_subscriptions(request):
             'price': row[4],
             'expires_at': row[5],
             'created_at': row[6],
-            'servers_list': row[7]
+            'traffic_gb': round(traffic_gb, 1),
+            'days': row[8] or 30,
+            'devices': row[9] or 1,
+            'telegram_id': row[10],
+            'username': row[11] or row[12] or 'Unknown',
+            'tariff_name': f"{row[8] or 30} дней"
         })
     
     conn.close()
@@ -1688,6 +1858,399 @@ asyncio.run(notify_balance_topup({telegram_id}, {amount}, {new_balance}))
     })
 
 
+# === Серверы ===
+async def admin_get_servers(request):
+    """Получить список серверов"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='servers'")
+        if not cursor.fetchone():
+            cursor.execute("""CREATE TABLE IF NOT EXISTS servers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, host TEXT NOT NULL, ip TEXT NOT NULL, port INTEGER DEFAULT 22, username TEXT DEFAULT 'root', location TEXT, status TEXT DEFAULT 'offline', is_active INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+            conn.commit()
+            return web.json_response({'servers': []})
+        
+        cursor.execute("SELECT id, name, host, ip, port, username, location, status, is_active, created_at FROM servers ORDER BY id DESC")
+        servers = []
+        for row in cursor.fetchall():
+            servers.append({'id': row[0], 'name': row[1], 'host': row[2], 'ip': row[3], 'port': row[4], 'username': row[5], 'location': row[6], 'status': row[7], 'is_active': bool(row[8]), 'created_at': row[9]})
+        
+        conn.close()
+        return web.json_response({'servers': servers})
+    except Exception as e:
+        conn.close()
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def admin_add_server(request):
+    """Добавить сервер"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    name = data.get('name')
+    host = data.get('host')
+    ip = data.get('ip')
+    port = int(data.get('port', 22))
+    username = data.get('username', 'root')
+    location = data.get('location', '')
+    
+    if not name or not host or not ip:
+        return web.json_response({'error': 'name, host, ip required'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO servers (name, host, ip, port, username, location, status, is_active) VALUES (?, ?, ?, ?, ?, ?, 'offline', 1)", (name, host, ip, port, username, location))
+    conn.commit()
+    server_id = cursor.lastrowid
+    conn.close()
+    
+    return web.json_response({'success': True, 'server_id': server_id})
+
+
+async def admin_delete_server(request):
+    """Удалить сервер"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    server_id = int(data.get('server_id'))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM servers WHERE id = ?", (server_id,))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
+async def admin_toggle_server(request):
+    """Включить/выключить сервер"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    server_id = int(data.get('server_id'))
+    is_active = int(data.get('is_active', 1))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE servers SET is_active = ? WHERE id = ?", (is_active, server_id))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
+# === Тарифы ===
+async def admin_get_tariffs(request):
+    """Получить список тарифов"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tariffs'")
+    if not cursor.fetchone():
+        cursor.execute("""CREATE TABLE IF NOT EXISTS tariffs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, days INTEGER NOT NULL, price REAL NOT NULL, traffic_gb INTEGER DEFAULT 10, devices INTEGER DEFAULT 1, is_active INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        conn.commit()
+        conn.close()
+        return web.json_response({'tariffs': []})
+    
+    cursor.execute("SELECT id, name, days, price, traffic_gb, devices, is_active, created_at FROM tariffs ORDER BY days ASC")
+    tariffs = []
+    for row in cursor.fetchall():
+        tariffs.append({'id': row[0], 'name': row[1], 'days': row[2], 'price': row[3], 'traffic_gb': row[4], 'devices': row[5], 'is_active': bool(row[6]), 'created_at': row[7]})
+    
+    conn.close()
+    return web.json_response({'tariffs': tariffs})
+
+
+async def admin_add_tariff(request):
+    """Добавить тариф"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    name = data.get('name')
+    days = int(data.get('days', 30))
+    price = float(data.get('price', 0))
+    traffic_gb = int(data.get('traffic_gb', 10))
+    devices = int(data.get('devices', 1))
+    
+    if not name or price <= 0:
+        return web.json_response({'error': 'name and price required'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO tariffs (name, days, price, traffic_gb, devices, is_active) VALUES (?, ?, ?, ?, ?, 1)", (name, days, price, traffic_gb, devices))
+    conn.commit()
+    tariff_id = cursor.lastrowid
+    conn.close()
+    
+    return web.json_response({'success': True, 'tariff_id': tariff_id})
+
+
+async def admin_update_tariff(request):
+    """Обновить тариф"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    tariff_id = int(data.get('tariff_id'))
+    name = data.get('name')
+    days = int(data.get('days', 30))
+    price = float(data.get('price', 0))
+    traffic_gb = int(data.get('traffic_gb', 10))
+    devices = int(data.get('devices', 1))
+    is_active = int(data.get('is_active', 1))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE tariffs SET name=?, days=?, price=?, traffic_gb=?, devices=?, is_active=? WHERE id = ?", (name, days, price, traffic_gb, devices, is_active, tariff_id))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
+async def admin_delete_tariff(request):
+    """Удалить тариф"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    tariff_id = int(data.get('tariff_id'))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM tariffs WHERE id = ?", (tariff_id,))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
+# === Рассылки ===
+async def admin_broadcast(request):
+    """Отправить рассылку"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    message = data.get('message')
+    
+    if not message:
+        return web.json_response({'error': 'message required'}, status=400)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, telegram_id FROM users WHERE telegram_id IS NOT NULL")
+    users = cursor.fetchall()
+    
+    sent = 0
+    failed = 0
+    
+    for user_id, telegram_id in users:
+        try:
+            await bot.send_message(telegram_id, message)
+            sent += 1
+        except Exception as e:
+            logger.error(f"Ошибка отправки пользователю {telegram_id}: {e}")
+            failed += 1
+    
+    conn.close()
+    
+    return web.json_response({'success': True, 'sent': sent, 'failed': failed})
+
+
+async def admin_get_broadcasts(request):
+    """История рассылок"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    return web.json_response({'broadcasts': []})
+
+
+# === Действия с пользователями ===
+async def admin_block_user(request):
+    """Заблокировать пользователя"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    user_id = int(data.get('user_id'))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET is_blocked = 1 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
+async def admin_unblock_user(request):
+    """Разблокировать пользователя"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    user_id = int(data.get('user_id'))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET is_blocked = 0 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
+async def admin_delete_user(request):
+    """Удалить пользователя"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    user_id = int(data.get('user_id'))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM subscriptions WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM payments WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
+# === Админ авторизация ===
+import hashlib
+import secrets
+
+ADMIN_USERS = {
+    'admin': hashlib.sha256('admin123'.encode()).hexdigest(),
+    'stanislav': hashlib.sha256('stanislav123'.encode()).hexdigest()
+}
+
+async def admin_login(request):
+    """Логин через логин/пароль"""
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    username = data.get('username', '')
+    password = data.get('password', '')
+    
+    if username not in ADMIN_USERS:
+        return web.json_response({'error': 'Invalid credentials'}, status=401)
+    
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    if password_hash != ADMIN_USERS[username]:
+        return web.json_response({'error': 'Invalid credentials'}, status=401)
+    
+    # Генерируем токен
+    token = secrets.token_urlsafe(32)
+    
+    return web.json_response({
+        'success': True,
+        'token': token,
+        'username': username
+    })
+
+
+async def admin_auth(request):
+    """Проверка авторизации через Telegram"""
+    telegram_id = request.query.get('telegram_id')
+    init_data = request.query.get('init_data')
+    
+    # Проверяем через базу - только для админов
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Проверяем, есть ли пользователь и является ли он админом (по ID или username)
+    cursor.execute("SELECT id FROM users WHERE telegram_id = ?", (int(telegram_id) if telegram_id else 0,))
+    user = cursor.fetchone()
+    
+    # Разрешаем доступ для определенных Telegram ID (добавь свои)
+    ALLOWED_TG_IDS = [2056591682]  # Станислав
+    
+    if user or (telegram_id and int(telegram_id) in ALLOWED_TG_IDS):
+        token = secrets.token_urlsafe(32)
+        conn.close()
+        return web.json_response({
+            'success': True,
+            'token': token,
+            'telegram_id': telegram_id
+        })
+    
+    conn.close()
+    return web.json_response({'error': 'Access denied'}, status=403)
+
+
 def setup_api_routes(app):
     """Настроить API маршруты"""
     app.router.add_get('/api/squads', get_squads)
@@ -1695,6 +2258,7 @@ def setup_api_routes(app):
     app.router.add_post('/api/subscription/servers', update_subscription_servers)
     app.router.add_get('/api/subscription/addons-price', get_addons_price)
     app.router.add_post('/api/subscription/traffic', add_subscription_traffic)
+    app.router.add_get('/api/subscription/traffic', get_subscription_traffic)
     app.router.add_post('/api/subscription/device', add_subscription_device)
     app.router.add_get('/api/user', get_user_data)
     app.router.add_get('/api/subscription/links', get_subscription_links)
@@ -1714,7 +2278,34 @@ def setup_api_routes(app):
     # Админ
     app.router.add_get('/api/admin/stats', admin_get_stats)
     app.router.add_get('/api/admin/users', admin_get_users)
+    app.router.add_get('/api/admin/user', admin_get_user_detail)
     app.router.add_get('/api/admin/subscriptions', admin_get_subscriptions)
     app.router.add_get('/api/admin/payments', admin_get_payments)
     app.router.add_post('/api/admin/add_balance', admin_add_balance)
+    
+    # Серверы
+    app.router.add_get('/api/admin/servers', admin_get_servers)
+    app.router.add_post('/api/admin/server/add', admin_add_server)
+    app.router.add_post('/api/admin/server/delete', admin_delete_server)
+    app.router.add_post('/api/admin/server/toggle', admin_toggle_server)
+    
+    # Тарифы
+    app.router.add_get('/api/admin/tariffs', admin_get_tariffs)
+    app.router.add_post('/api/admin/tariff/add', admin_add_tariff)
+    app.router.add_post('/api/admin/tariff/update', admin_update_tariff)
+    app.router.add_post('/api/admin/tariff/delete', admin_delete_tariff)
+    
+    # Рассылки
+    app.router.add_post('/api/admin/broadcast', admin_broadcast)
+    app.router.add_get('/api/admin/broadcasts', admin_get_broadcasts)
+    
+    # Пользователи - действия
+    app.router.add_post('/api/admin/user/block', admin_block_user)
+    app.router.add_post('/api/admin/user/unblock', admin_unblock_user)
+    app.router.add_post('/api/admin/user/delete', admin_delete_user)
+    
+    # Авторизация
+    app.router.add_post('/api/admin/login', admin_login)
+    app.router.add_get('/api/admin/auth', admin_auth)
+    
     logger.info("✅ API routes настроены")

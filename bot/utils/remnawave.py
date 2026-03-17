@@ -258,6 +258,29 @@ async def get_subscription_links(uuid: str) -> dict:
 
 def delete_vpn_user(uuid: str) -> bool:
     """Удалить VPN пользователя (синхронная обёртка)"""
+    # Проверяем защищённых пользователей
+    try:
+        from protected_users import PROTECTED_USERS
+        
+        # Получаем username по uuid через SDK
+        import asyncio
+        async def _check_protected():
+            from config import REMNAWAVE_URL, REMNAWAVE_TOKEN
+            from remnawave import RemnawaveSDK
+            sdk = RemnawaveSDK(base_url=REMNAWAVE_URL, token=REMNAWAVE_TOKEN)
+            return await sdk.users.get_user_by_uuid(uuid=uuid)
+        
+        try:
+            user = asyncio.run(_check_protected())
+            if user and user.username in PROTECTED_USERS:
+                print(f"⛔ Удаление ЗАПРЕЩЕНО для защищённого пользователя: {user.username}")
+                return False
+        except Exception as e:
+            print(f"Ошибка проверки защиты: {e}")
+            pass
+    except ImportError:
+        pass
+    
     try:
         # Создаём новый event loop для удаления
         import asyncio

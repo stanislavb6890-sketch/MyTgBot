@@ -16,10 +16,20 @@ async def cmd_start(message: Message):
     username = message.from_user.username
     first_name = message.from_user.first_name or "друг"
     
-    # Проверяем реферальный код (только формат: /start refTELEGRAM_ID)
     text = message.text
-    referrer_code = None
     print(f"📨 Получен /start: '{text}'")
+    
+    # Проверяем параметр admin_login
+    if text == "/start admin_login" or text.startswith("/start admin_login "):
+        await message.answer(
+            "🔐 <b>Вход в админ-панель</b>\n\nНажмите кнопку ниже для входа:",
+            reply_markup=get_main_keyboard(False, False, telegram_id),
+            parse_mode="HTML"
+        )
+        return
+    
+    # Проверяем реферальный код (только формат: /start refTELEGRAM_ID)
+    referrer_code = None
     if text and text.startswith("/start ref"):
         referrer_code = text.replace("/start ref", "").strip()
         print(f"🔗 Реферальный код: '{referrer_code}'")
@@ -28,8 +38,6 @@ async def cmd_start(message: Message):
         else:
             print(f"❌ Не цифры: {referrer_code}")
             referrer_code = None
-    else:
-        print(f"❌ Неверный формат /start")
     
     # Создаём/получаем пользователя
     user_id = get_or_create_user(telegram_id, username, first_name)
@@ -69,21 +77,6 @@ async def cmd_start(message: Message):
         # Есть подписка
         text = f"👋 С возвращением, {first_name}!\n\n"
         text += "У вас есть доступ к кабинету."
-    
-    # Удаляем последние сообщения бота (не пользователя)
-    try:
-        chat_id = message.chat.id
-        bot = message.bot
-        history = await bot.get_chat_history(chat_id, limit=20)
-        for msg in history:
-            # Удаляем только сообщения бота
-            if msg.from_user and msg.from_user.is_bot:
-                try:
-                    await bot.delete_message(chat_id, msg.message_id)
-                except:
-                    pass
-    except Exception as e:
-        print(f"Error deleting: {e}")
     
     # Отправляем новое
     await message.answer(text, reply_markup=get_main_keyboard(has_subscription, has_trial_used, telegram_id))

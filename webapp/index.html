@@ -674,6 +674,31 @@
         tg.expand();
         tg.ready();
         
+        // Если открыто в браузере (не в WebApp) - показать кнопку возврата
+        if (!tg.initDataUnsafe?.user?.id) {
+            document.body.innerHTML = `
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;background:var(--bg-primary);color:var(--text-primary);font-family:system-ui,sans-serif;">
+                    <div style="font-size:48px;margin-bottom:20px;">🔄</div>
+                    <h2 style="margin-bottom:15px;">Платёж завершён!</h2>
+                    <p style="color:var(--text-secondary);margin-bottom:30px;">Вернитесь в мини-приложение Telegram для продолжения</p>
+                    <button id="openAppBtn" style="background:var(--accent);color:#000;padding:15px 30px;border-radius:12px;font-weight:600;border:none;cursor:pointer;font-size:16px;">🚀 Открыть мини-приложение</button>
+                </div>
+            `;
+            
+            // Обработчик для кнопки
+            document.getElementById('openAppBtn').addEventListener('click', function() {
+                // Пробуем разные способы открытия
+                const appUrl = 'https://t.me/cloaknetvbot/app';
+                if (typeof tg.openLink === 'function') {
+                    tg.openLink(appUrl);
+                } else if (typeof tg.openTelegramLink === 'function') {
+                    tg.openTelegramLink(appUrl);
+                } else {
+                    window.location.href = appUrl;
+                }
+            });
+        }
+        
         // Данные пользователя
         let userData = null;
         let subscriptions = [];
@@ -916,6 +941,10 @@
                 // Дней осталось
                 const daysLeft = Math.max(0, Math.ceil((new Date(sub.expires_at) - new Date()) / (1000 * 60 * 60 * 24)));
                 
+                // Прогресс: сколько дней прошло (использовано)
+                const daysUsed = sub.duration_days - daysLeft;
+                const progressPercent = Math.max(0, Math.min(100, (daysUsed / sub.duration_days) * 100));
+                
                 // Статус текст
                 let statusText = '';
                 if (isTrial) statusText = '🎁 Тест';
@@ -936,7 +965,7 @@
                                 <span>${daysLeft} дней</span>
                             </div>
                             <div class="traffic-bar" style="height: 14px;">
-                                <div class="traffic-fill" style="width: ${Math.max(0, Math.min(100, (1 - daysLeft/sub.duration_days) * 100))}%; background: ${daysLeft < 7 ? 'var(--danger)' : 'var(--accent)'};"></div>
+                                <div class="traffic-fill" style="width: ${progressPercent}%; background: ${daysLeft < 7 ? 'var(--danger)' : 'var(--accent)'};"></div>
                             </div>
                         </div>
                         
@@ -995,12 +1024,33 @@
             }
         }
         
+        // Обновить трафик для конкретной подписки
+        async function updateTrafficForSubscription(subId) {
+            try {
+                const sub = subscriptions.find(s => s.id === subId);
+                if (!sub || !sub.remnawave_uuid) return;
+                
+                // Запрашиваем актуальный трафик из Remnawave
+                const response = await fetch(`${API_BASE}/api/subscription/traffic?sub_id=${subId}`);
+                const data = await response.json();
+                
+                if (data.traffic_used !== undefined) {
+                    sub.traffic_used = data.traffic_used / (1024 * 1024 * 1024); // bytes to GB
+                }
+            } catch (e) {
+                console.log('Ошибка обновления трафика:', e);
+            }
+        }
+        
         function showSubscriptionDetail(subId) {
-            selectedSubscription = subscriptions.find(s => s.id === subId);
-            if (!selectedSubscription) return;
-            
-            currentPage = 'detail';
-            renderSubscriptionDetail();
+            // Обновляем трафик перед показом
+            updateTrafficForSubscription(subId).then(() => {
+                selectedSubscription = subscriptions.find(s => s.id === subId);
+                if (!selectedSubscription) return;
+                
+                currentPage = 'detail';
+                renderSubscriptionDetail();
+            });
         }
         
         function renderSubscriptionDetail() {
@@ -1222,7 +1272,11 @@
         
         function closeApp() {
             try {
-                closeApp();
+                if (typeof tg.close === 'function') {
+                    tg.close();
+                } else {
+                    window.location.href = 'https://t.me/cloaknetvbot';
+                }
             } catch(e) {
                 // Если не в Telegram - просто перенаправим
                 window.location.href = 'https://t.me/cloaknetvbot';
@@ -1443,38 +1497,19 @@
                 
                 let html = '';
                 data.payments.forEach(payment => {
-                    const date = new Date(payment.created_at).toLocaleDateString('ru-RU');
-                    const statusColors = {
-                        'pending': 'var(--warning)',
-                        'paid': 'var(--success)',
-                        'succeeded': 'var(--success)',
-                        'failed': 'var(--error)'
-                    };
-                    const statusLabels = {
-                        'pending': '⏳ Ожидание',
-                        'paid': '✅ Оплачен',
-                        'succeeded': '✅ Оплачен',
-                        'failed': '❌ Ошибка'
-                    };
-                    const statusColor = statusColors[payment.status] || 'var(--text-secondary)';
-                    const statusLabel = statusLabels[payment.status] || payment.status;
+                    const date = new Date(payment.created_at).toLocaleDateString('ru-RU', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+                    const isPaid = payment.status === 'paid' || payment.status === 'succeeded';
                     
                     html += `
-                        <div class="subscription-card" style="margin-bottom: 8px;">
-                            <div class="sub-header">
-                                <span style="font-weight: 600;">💰 ${payment.amount}₽</span>
-                                <span style="color: ${statusColor}; font-size: 12px;">${statusLabel}</span>
-                            </div>
-                            <div class="sub-info" style="margin-top: 8px;">
-                                <div class="sub-info-item">
-                                    <div class="label">Дата</div>
-                                    <div class="value">${date}</div>
-                                </div>
-                                <div class="sub-info-item">
-                                    <div class="label">ID</div>
-                                    <div class="value">#${payment.id}</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-card);border-radius:10px;margin-bottom:8px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <span style="font-size:20px;">${isPaid ? '✅' : '⏳'}</span>
+                                <div>
+                                    <div style="font-weight:600;font-size:15px;">${payment.amount}₽</div>
+                                    <div style="color:var(--text-secondary);font-size:12px;">${date}</div>
                                 </div>
                             </div>
+                            <span style="font-size:12px;color:${isPaid ? 'var(--success)' : 'var(--warning)'}">${isPaid ? 'Оплачено' : 'Ожидание'}</span>
                         </div>
                     `;
                 });
@@ -1840,13 +1875,18 @@
                 else if (createData.days >= 180) discountText = '<span style="color: var(--success);">-20% (6 мес)</span>';
                 else if (createData.days >= 90) discountText = '<span style="color: var(--success);">-15% (3 мес)</span>';
                 
+                // Старая и новая цена
+                const priceOld = price.oldPrice;
+                const priceNew = price.price;
+                const hasDiscount = priceOld !== priceNew;
+                
                 html += `
                     <div class="section-title">📋 Ваш тариф</div>
                     <div class="subscription-card">
                         <div class="sub-info">
                             <div class="sub-info-item">
                                 <div class="label">Период</div>
-                                <div class="value">${createData.days} дней ${discountText ? '(' + discountText + ')' : ''}</div>
+                                <div class="value">${createData.days} дней ${discountText ? '' + discountText + '' : ''}</div>
                             </div>
                             <div class="sub-info-item">
                                 <div class="label">Трафик</div>
@@ -1867,9 +1907,12 @@
                         </div>
                     </div>
                     
-                    <div class="total-card">
-                        <div class="label">Итого к оплате</div>
-                        <div class="price">${price} ₽</div>
+                    <div class="total-card" style="${hasDiscount ? 'background: linear-gradient(135deg, var(--bg-card), #134e3d);' : ''}">
+                        ${hasDiscount ? '<div style="font-size: 14px; font-weight: 600; color: var(--success); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">🎉 Скидка за период!</div>' : '<div class="label">Итого к оплате</div>'}
+                        <div style="display: flex; align-items: baseline; justify-content: center; gap: 12px;">
+                            ${hasDiscount ? '<span style="font-size: 20px; color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--danger); text-decoration-thickness: 2px;">' + priceOld + ' ₽</span>' : ''}
+                            <span style="font-size: 36px; font-weight: 700; color: ${hasDiscount ? 'var(--success)' : 'var(--text-primary)'};">${priceNew} ₽</span>
+                        </div>
                     </div>
                     
                     <button class="btn btn-secondary" onclick="goToStep4()">
@@ -1927,18 +1970,20 @@
                 discount = 0.85; // 15% скидка за 3 мес
             }
             
-            // Базовая цена:
+            // Базовая цена (без скидки):
             // 4.5₽ × дни + 2₽ × GB × количество_сбросов + 25₽ × устр + 45₽ × серверы
             const serversCount = createData.servers.length || 1;
-            const basePrice = (
+            const oldPrice = Math.round(
                 createData.days * 4.5 + 
-                createData.traffic * 2 * actualResets +  // реальное количество сбросов!
+                createData.traffic * 2 * actualResets +
                 createData.devices * 25 + 
                 serversCount * 45
             );
             
-            // Применяем скидку
-            return Math.round(basePrice * discount);
+            // Цена со скидкой
+            const price = Math.round(oldPrice * discount);
+            
+            return { price, oldPrice };
         }
         
         async function createTrial() {
@@ -1992,7 +2037,7 @@
             
             try {
                 const serversParam = createData.servers.join(',');
-                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.days}&traffic=${createData.traffic}&devices=${createData.devices}&servers=${serversParam}&traffic_reset=${createData.traffic_reset}&price=${price}`;
+                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.days}&traffic=${createData.traffic}&devices=${createData.devices}&servers=${serversParam}&traffic_reset=${createData.traffic_reset}&price=${price.price}`;
                 
                 const response = await fetch(url, { method: 'POST' });
                 const data = await response.json();
