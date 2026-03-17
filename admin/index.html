@@ -2,386 +2,242 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CloakNet Admin</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #141414;
-            --bg-card: #1c1c1c;
-            --accent: #22d3ee;
-            --text-primary: #fafafa;
-            --text-secondary: #a1a1aa;
-            --danger: #f87171;
-            --success: #22d3ee;
-            --border: #27272a;
-        }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: system-ui, sans-serif;
-            padding: 20px;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .header h1 { font-size: 24px; }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        
-        .stat-card {
-            background: var(--bg-card);
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-        }
-        
-        .stat-card .label {
-            color: var(--text-secondary);
-            font-size: 12px;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-        
-        .stat-card .value {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--accent);
-        }
-        
-        .section { margin-bottom: 32px; }
-        
-        .section h2 {
-            font-size: 18px;
-            margin-bottom: 16px;
-            color: var(--text-secondary);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--bg-card);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        
-        th, td {
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        th {
-            background: var(--bg-secondary);
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-        }
-        
-        tr:hover { background: var(--bg-secondary); }
-        
-        .badge {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        
-        .badge.active { background: rgba(34, 211, 238, 0.2); color: var(--accent); }
-        .badge.inactive { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
-        
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-        }
-        
-        .btn-danger { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
-        .btn-danger:hover { background: rgba(248, 113, 113, 0.3); }
-        
-        .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-        
-        .tab {
-            padding: 10px 20px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            color: var(--text-secondary);
-        }
-        
-        .tab.active {
-            background: var(--accent);
-            color: #000;
-            border-color: var(--accent);
-        }
-        
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        
-        .refresh-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--accent);
-            border: none;
-            cursor: pointer;
-            font-size: 20px;
-        }
+        :root{--bg-primary:#0c0c0e;--bg-secondary:#141417;--bg-tertiary:#1c1c21;--bg-card:#1e1e24;--bg-hover:#26262e;--accent:#22d3ee;--accent-muted:#164e63;--accent-hover:#67e8f9;--text-primary:#f4f4f5;--text-secondary:#a1a1aa;--text-muted:#71717a;--danger:#f87171;--danger-muted:#7f1d1d;--success:#34d399;--warning:#fbbf24;--border:#27272a;--border-light:#3f3f46;--radius-sm:6px;--radius:10px;--radius-lg:14px;--shadow:0 4px 12px rgba(0,0,0,0.4);--transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}
+        *{margin:0;padding:0;box-sizing:border-box}
+        html{font-size:15px}
+        body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased}
+        .app{display:flex;min-height:100vh}
+        .sidebar{width:240px;background:var(--bg-secondary);border-right:1px solid var(--border);padding:20px 12px;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+        .logo{display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:24px}
+        .logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#06b6d4);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:18px}
+        .logo-text{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--accent),#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .nav{display:flex;flex-direction:column;gap:4px;flex:1}
+        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius);color:var(--text-secondary);cursor:pointer;transition:var(--transition);font-size:14px;font-weight:500;border:none;background:none;width:100%;text-align:left}
+        .nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+        .nav-item.active{background:var(--accent-muted);color:var(--accent)}
+        .nav-item-icon{font-size:18px;width:24px;text-align:center}
+        .main{flex:1;margin-left:240px;padding:24px 32px;min-height:100vh}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+        .header-title{font-size:24px;font-weight:700}
+        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+        .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:var(--transition)}
+        .stat-card:hover{border-color:var(--border-light);transform:translateY(-2px)}
+        .stat-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+        .stat-label{color:var(--text-secondary);font-size:13px;font-weight:500}
+        .stat-icon{width:40px;height:40px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:18px}
+        .stat-icon.users{background:rgba(34,211,238,0.15)}
+        .stat-icon.subs{background:rgba(52,211,153,0.15)}
+        .stat-icon.money{background:rgba(251,191,36,0.15)}
+        .stat-icon.servers{background:rgba(167,139,250,0.15)}
+        .stat-value{font-size:28px;font-weight:700;margin-bottom:4px}
+        .stat-value.accent{color:var(--accent)}
+        .stat-value.success{color:var(--success)}
+        .stat-value.warning{color:var(--warning)}
+        .stat-value.purple{color:#a78bfa}
+        .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:24px}
+        .card-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+        .card-title{font-size:16px;font-weight:600}
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:14px 20px;text-align:left}
+        th{background:var(--bg-secondary);color:var(--text-secondary);font-weight:500;font-size:12px;text-transform:uppercase}
+        td{border-bottom:1px solid var(--border);font-size:14px}
+        tr:hover td{background:var(--bg-hover)}
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;transition:var(--transition);border:none;font-family:inherit}
+        .btn-primary{background:var(--accent);color:#000}
+        .btn-primary:hover{background:var(--accent-hover)}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border)}
+        .btn-secondary:hover{background:var(--bg-hover)}
+        .btn-icon{width:36px;height:36px;padding:0;border-radius:var(--radius-sm);background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary)}
+        .btn-icon:hover{background:var(--bg-hover);color:var(--text-primary)}
+        .btn-danger{background:var(--danger-muted);color:var(--danger)}
+        .btn-danger:hover{background:var(--danger);color:#fff}
+        .form-group{margin-bottom:16px}
+        .form-group label{display:block;color:var(--text-secondary);font-size:13px;margin-bottom:6px}
+        .form-group input,.form-group textarea{width:100%;padding:10px 14px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:14px;font-family:inherit}
+        .form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
+        .search{display:flex;align-items:center;gap:10px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;width:260px}
+        .search input{background:none;border:none;color:var(--text-primary);width:100%;outline:none}
+        .status-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
+        .status-badge.active{background:rgba(52,211,153,0.15);color:var(--success)}
+        .status-badge.inactive{background:rgba(248,113,113,0.15);color:var(--danger)}
+        .status-badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:20px}
+        .item-card{background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:var(--transition)}
+        .item-card:hover{border-color:var(--border-light)}
+        .item-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+        .item-card-title{font-weight:600;font-size:16px}
+        .item-card-price{font-size:20px;font-weight:700;color:var(--accent)}
+        .item-card-info{color:var(--text-secondary);font-size:13px}
+        .item-card-info div{margin-bottom:4px}
+        .server-status{display:flex;align-items:center;gap:8px}
+        .server-dot{width:8px;height:8px;border-radius:50%}
+        .server-dot.online{background:var(--success)}
+        .server-dot.offline{background:var(--danger)}
+        .menu-toggle{display:none;position:fixed;bottom:24px;right:24px;width:56px;height:56px;background:var(--accent);border:none;border-radius:50%;font-size:22px;cursor:pointer;z-index:9999;box-shadow:0 4px 20px rgba(34,211,238,0.4)}
+        .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9998}
+        .mobile-menu{position:fixed;top:0;left:0;bottom:0;width:280px;background:var(--bg-secondary);z-index:9999;padding:20px;transform:translateX(-100%);transition:transform 0.3s ease}
+        .mobile-menu.open{transform:translateX(0)}
+        .mobile-menu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+        .close-btn{width:40px;height:40px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:24px;cursor:pointer}
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:10000;padding:20px}
+        .modal-overlay.active{display:flex}
+        .modal{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .modal-title{font-size:18px;font-weight:600}
+        .modal-close{width:32px;height:32px;background:none;border:none;color:var(--text-secondary);font-size:24px;cursor:pointer}
+        .page{display:none}
+        .page.active{display:block}
+        .empty{text-align:center;padding:40px;color:var(--text-muted)}
+        @media(max-width:1200px){.stats{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:16px}.menu-toggle{display:flex;align-items:center;justify-content:center}.mobile-overlay.active{display:block}.header{flex-direction:column;gap:16px;align-items:flex-start}.stats{grid-template-columns:1fr}.card-header{flex-direction:column;gap:12px;align-items:flex-start}th,td{padding:10px 12px;font-size:13px}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        .stat-card{animation:fadeIn 0.4s ease forwards}
+        .stat-card:nth-child(1){animation-delay:0.05s}
+        .stat-card:nth-child(2){animation-delay:0.1s}
+        .stat-card:nth-child(3){animation-delay:0.15s}
+        .stat-card:nth-child(4){animation-delay:0.2s}
+        .user-detail-header{display:flex;align-items:center;gap:20px;padding:24px;background:var(--bg-card);border-bottom:1px solid var(--border)}
+        .user-detail-avatar{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),#06b6d4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700}
+        .user-detail-info{flex:1}
+        .user-detail-name{font-size:20px;font-weight:700;margin-bottom:4px}
+        .user-detail-username{color:var(--text-secondary)}
+        .user-detail-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px}
+        .user-detail-stat{background:var(--bg-tertiary);padding:16px;border-radius:var(--radius);text-align:center}
+        .user-detail-stat-value{font-size:20px;font-weight:700;color:var(--accent)}
+        .user-detail-stat-label{font-size:12px;color:var(--text-secondary)}
+        .user-tabs{display:flex;gap:4px;padding:0 20px;background:var(--bg-card);border-bottom:1px solid var(--border)}
+        .user-tab{padding:14px 20px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:var(--transition)}
+        .user-tab:hover{color:var(--text-primary)}
+        .user-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+        .user-tab-content{padding:20px;display:none}
+        .user-tab-content.active{display:block}
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🛡️ CloakNet Admin</h1>
-        <div id="admin-info"></div>
-    </div>
-    
-    <div class="stats" id="stats"></div>
-    
-    <div class="tabs">
-        <div class="tab active" onclick="switchTab('users')">👥 Пользователи</div>
-        <div class="tab" onclick="switchTab('subscriptions')">📱 Подписки</div>
-        <div class="tab" onclick="switchTab('balance')">💰 Баланс</div>
-    </div>
-    
-    <div id="users" class="tab-content active"></div>
-    <div id="subscriptions" class="tab-content"></div>
-    <div id="balance" class="tab-content"></div>
-    
-    <button class="refresh-btn" onclick="loadAll()">🔄</button>
-    
-    <script>
-        const API = 'https://test.cloaknet.site';
-        const ADMIN_KEY = 'admin_secret_key_2026';
-        
-        async function loadStats() {
-            const resp = await fetch(`${API}/api/admin/stats?key=${ADMIN_KEY}`);
-            const data = await resp.json();
-            
-            document.getElementById('stats').innerHTML = `
-                <div class="stat-card">
-                    <div class="label">Всего пользователей</div>
-                    <div class="value">${data.total_users || 0}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="label">Всего подписок</div>
-                    <div class="value">${data.total_subscriptions || 0}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="label">Активных</div>
-                    <div class="value">${data.active_subscriptions || 0}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="label">Общий баланс</div>
-                    <div class="value">${(data.total_balance || 0).toFixed(0)}₽</div>
-                </div>
-            `;
-        }
-        
-        async function loadUsers() {
-            const resp = await fetch(`${API}//api/admin/users?key=${ADMIN_KEY}`);
-            const data = await resp.json();
-            
-            if (!data.users || data.users.length === 0) {
-                document.getElementById('users').innerHTML = '<p style="color: var(--text-secondary);">Нет пользователей</p>';
-                return;
-            }
-            
-            document.getElementById('users').innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Telegram</th>
-                            <th>Имя</th>
-                            <th>Баланс</th>
-                            <th>Бонус реф.</th>
-                            <th>Подписки</th>
-                            <th>Дата</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.users.map(u => `
-                            <tr>
-                                <td>${u.id}</td>
-                                <td>${u.telegram_id}</td>
-                                <td>${u.first_name || '-'} ${u.username ? '@' + u.username : ''}</td>
-                                <td style="color: var(--accent);">${u.balance?.toFixed(0) || 0}₽</td>
-                                <td>${u.referral_bonus?.toFixed(0) || 0}₽</td>
-                                <td>${u.subscription_count || 0}</td>
-                                <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-        
-        async function loadSubscriptions() {
-            const resp = await fetch(`${API}//api/admin/subscriptions?key=${ADMIN_KEY}`);
-            const data = await resp.json();
-            
-            if (!data.subscriptions || data.subscriptions.length === 0) {
-                document.getElementById('subscriptions').innerHTML = '<p style="color: var(--text-secondary);">Нет подписок</p>';
-                return;
-            }
-            
-            document.getElementById('subscriptions').innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Пользователь</th>
-                            <th>Статус</th>
-                            <th>Оплачено</th>
-                            <th>Цена</th>
-                            <th>Истекает</th>
-                            <th>Серверы</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.subscriptions.map(s => `
-                            <tr>
-                                <td>${s.id}</td>
-                                <td>${s.user_id}</td>
-                                <td><span class="badge ${s.status}">${s.status}</span></td>
-                                <td><span class="badge ${s.is_paid ? 'active' : 'inactive'}">${s.is_paid ? 'Да' : 'Нет'}</span></td>
-                                <td>${s.price || 0}₽</td>
-                                <td>${s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '-'}</td>
-                                <td>${s.servers_list || '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-        
-        async function loadPayments() {
-            const resp = await fetch(`${API}//api/admin/payments?key=${ADMIN_KEY}`);
-            const data = await resp.json();
-            
-            if (!data.payments || data.payments.length === 0) {
-                document.getElementById('payments').innerHTML = '<p style="color: var(--text-secondary);">Нет платежей</p>';
-                return;
-            }
-            
-            document.getElementById('payments').innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Сумма</th>
-                            <th>Дата</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.payments.map(p => `
-                            <tr>
-                                <td>${p.id}</td>
-                                <td style="color: var(--accent);">+${p.amount?.toFixed(0) || 0}₽</td>
-                                <td>${p.created_at ? new Date(p.created_at).toLocaleString() : '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-        
-        function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            
-            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
-            document.getElementById(tab).classList.add('active');
-        }
-        
-        async function loadBalance() {
-            const resp = await fetch(`${API}/api/admin/users?key=${ADMIN_KEY}`);
-            const data = await resp.json();
-            
-            if (!data.users || data.users.length === 0) {
-                document.getElementById('balance').innerHTML = '<p style="color: var(--text-secondary);">Нет пользователей</p>';
-                return;
-            }
-            
-            document.getElementById('balance').innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Пользователь</th>
-                            <th>Текущий баланс</th>
-                            <th>Бонус реф.</th>
-                            <th>Изменить</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.users.map(u => `
-                            <tr>
-                                <td>${u.id}</td>
-                                <td>${u.first_name || '-'} ${u.username ? '@' + u.username : ''}</td>
-                                <td style="color: var(--accent); font-weight: bold;">${u.balance?.toFixed(0) || 0}₽</td>
-                                <td>${u.referral_bonus?.toFixed(0) || 0}₽</td>
-                                <td>
-                                    <button class="btn" style="background: var(--accent); color: #000; padding: 6px 12px;" onclick="addBalance(${u.id}, ${u.telegram_id})">+ Добавить</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-        
-        async function addBalance(userId, telegramId) {
-            const amount = prompt('Введите сумму для добавления:', '100');
-            if (!amount || isNaN(amount)) return;
-            
-            if (!confirm(`Добавить ${amount}₽ пользователю ${telegramId}?`)) return;
-            
-            try {
-                const resp = await fetch(`${API}/api/admin/add_balance?key=${ADMIN_KEY}&user_id=${userId}&amount=${amount}`, {
-                    method: 'POST'
-                });
-                const data = await resp.json();
-                
-                if (data.success) {
-                    alert(`✅ Добавлено! Новый баланс: ${data.new_balance}₽`);
-                    loadBalance(); // Перезагрузить таблицу
-                } else {
-                    alert('❌ Ошибка: ' + (data.error || 'Unknown'));
-                }
-            } catch (e) {
-                alert('❌ Ошибка: ' + e.message);
-            }
-        }
-        
-        async function loadAll() {
-            await Promise.all([loadStats(), loadUsers(), loadSubscriptions(), loadBalance()]);
-        }
-        
-        loadAll();
-    </script>
+<div class="app">
+<aside class="sidebar">
+<div class="logo"><div class="logo-icon">🛡️</div><span class="logo-text">CloakNet</span></div>
+<nav class="nav">
+<button class="nav-item active" data-page="dashboard"><span class="nav-item-icon">📊</span>Дашборд</button>
+<button class="nav-item" data-page="users"><span class="nav-item-icon">👥</span>Пользователи</button>
+<button class="nav-item" data-page="subscriptions"><span class="nav-item-icon">📦</span>Подписки</button>
+<button class="nav-item" data-page="servers"><span class="nav-item-icon">🖥</span>Серверы</button>
+<button class="nav-item" data-page="tariffs"><span class="nav-item-icon">💰</span>Тарифы</button>
+<button class="nav-item" data-page="payments"><span class="nav-item-icon">💳</span>Платежи</button>
+<button class="nav-item" data-page="broadcast"><span class="nav-item-icon">📢</span>Рассылки</button>
+</nav>
+</aside>
+<main class="main">
+<div class="page active" id="page-dashboard">
+<header class="header"><h1 class="header-title">Дашборд</h1></header>
+<div class="stats">
+<div class="stat-card"><div class="stat-header"><span class="stat-label">Пользователи</span><div class="stat-icon users">👥</div></div><div class="stat-value" id="stat-users">—</div></div>
+<div class="stat-card"><div class="stat-header"><span class="stat-label">Подписки</span><div class="stat-icon subs">📦</div></div><div class="stat-value accent" id="stat-subs">—</div></div>
+<div class="stat-card"><div class="stat-header"><span class="stat-label">Доход</span><div class="stat-icon money">💰</div></div><div class="stat-value warning" id="stat-balance">—</div></div>
+<div class="stat-card"><div class="stat-header"><span class="stat-label">Серверы</span><div class="stat-icon servers">🖥</div></div><div class="stat-value purple" id="stat-servers">—</div></div>
+</div>
+</div>
+<div class="page" id="page-users">
+<header class="header"><h1 class="header-title">Пользователи</h1><div class="search">🔍<input type="text" id="user-search" placeholder="Поиск..."></div></header>
+<div class="card"><div class="card-header"><h3 class="card-title">Все пользователи</h3></div><div class="table-wrap"><table><thead><tr><th>Пользователь</th><th>Баланс</th><th>Подписка</th><th>Статус</th><th>Действия</th></tr></thead><tbody id="users-table"></tbody></table></div></div>
+</div>
+<div class="page" id="page-subscriptions">
+<header class="header"><h1 class="header-title">Подписки</h1></header>
+<div class="card"><div class="table-wrap"><table><thead><tr><th>ID</th><th>Пользователь</th><th>Тариф</th><th>Действительна до</th><th>Статус</th><th>Действия</th></tr></thead><tbody id="subs-table"></tbody></table></div></div>
+</div>
+<div class="page" id="page-servers">
+<header class="header"><h1 class="header-title">Серверы</h1><button class="btn btn-primary" onclick="openModal('server')">+ Добавить</button></header>
+<div class="card"><div class="grid" id="servers-grid"></div></div>
+</div>
+<div class="page" id="page-tariffs">
+<header class="header"><h1 class="header-title">Тарифы</h1><button class="btn btn-primary" onclick="openModal('tariff')">+ Добавить</button></header>
+<div class="card"><div class="grid" id="tariffs-grid"></div></div>
+</div>
+<div class="page" id="page-payments">
+<header class="header"><h1 class="header-title">Платежи</h1></header>
+<div class="card"><div class="table-wrap"><table><thead><tr><th>ID</th><th>Пользователь</th><th>Сумма</th><th>Дата</th><th>Статус</th></tr></thead><tbody id="payments-table"></tbody></table></div></div>
+</div>
+<div class="page" id="page-broadcast">
+<header class="header"><h1 class="header-title">Рассылки</h1></header>
+<div class="card"><div style="padding:20px;"><div class="form-group"><label>Сообщение</label><textarea id="broadcast-message" rows="6" placeholder="Введите текст рассылки..."></textarea></div><button class="btn btn-primary" onclick="sendBroadcast()">📢 Отправить всем</button></div></div>
+</div>
+
+<!-- User Detail -->
+<div class="page" id="page-user-detail">
+<header class="header">
+<button class="btn btn-secondary" onclick="showPage('users');document.querySelectorAll('.nav-item').forEach(b=>{b.classList.remove('active');document.querySelector('[data-page=users]').classList.add('active')})">← Назад</button>
+<h1 class="header-title">Пользователь</h1>
+</header>
+<div id="user-detail-content"></div>
+</div>
+
+</main>
+</div>
+<div class="mobile-overlay" id="overlay"></div>
+<button class="menu-toggle" onclick="toggleMobileMenu()">☰</button>
+<div class="mobile-menu" id="mobile-menu">
+<div class="mobile-menu-header"><div class="logo"><div class="logo-icon">🛡️</div><span class="logo-text">CloakNet</span></div><button class="close-btn" onclick="toggleMobileMenu()">×</button></div>
+<nav class="nav">
+<button class="nav-item active" data-page="dashboard"><span class="nav-item-icon">📊</span>Дашборд</button>
+<button class="nav-item" data-page="users"><span class="nav-item-icon">👥</span>Пользователи</button>
+<button class="nav-item" data-page="subscriptions"><span class="nav-item-icon">📦</span>Подписки</button>
+<button class="nav-item" data-page="servers"><span class="nav-item-icon">🖥</span>Серверы</button>
+<button class="nav-item" data-page="tariffs"><span class="nav-item-icon">💰</span>Тарифы</button>
+<button class="nav-item" data-page="payments"><span class="nav-item-icon">💳</span>Платежи</button>
+<button class="nav-item" data-page="broadcast"><span class="nav-item-icon">📢</span>Рассылки</button>
+</nav>
+</div>
+<div class="modal-overlay" id="modal"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="modal-title"></h3><button class="modal-close" onclick="closeModal()">×</button></div><div id="modal-content"></div></div></div>
+<script>
+const API_KEY='admin_secret_key_2026';
+const API_BASE='';
+
+// Проверка авторизации
+if(!localStorage.getItem('admin_token')){window.location.href='/admin/login';throw new Error('Not authorized')}
+document.querySelectorAll('.nav-item').forEach(btn=>{btn.addEventListener('click',function(){const page=this.dataset.page;showPage(page);document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));this.classList.add('active');loadPageData(page);if(window.innerWidth<768)toggleMobileMenu()})});
+function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+page).classList.add('active')}
+function toggleMobileMenu(){document.getElementById('mobile-menu').classList.toggle('open');document.getElementById('overlay').classList.toggle('active')}
+function openModal(type,data=null){const modal=document.getElementById('modal');const title=document.getElementById('modal-title');const content=document.getElementById('modal-content');
+if(type==='server'){title.textContent='Добавить сервер';content.innerHTML='<div class="form-group"><label>Название</label><input type="text" id="server-name" placeholder="Россия-1"></div><div class="form-group"><label>Хост</label><input type="text" id="server-host" placeholder="vpn1.example.com"></div><div class="form-group"><label>IP</label><input type="text" id="server-ip" placeholder="192.168.1.1"></div><div class="form-group"><label>Порт</label><input type="number" id="server-port" value="22"></div><div class="form-group"><label>Логин</label><input type="text" id="server-username" value="root"></div><div class="form-group"><label>Локация</label><input type="text" id="server-location" placeholder="Москва"></div><button class="btn btn-primary" style="width:100%" onclick="addServer()">Добавить</button>'}
+else if(type==='tariff'){title.textContent='Добавить тариф';content.innerHTML='<div class="form-group"><label>Название</label><input type="text" id="tariff-name" placeholder="Базовый"></div><div class="form-group"><label>Дней</label><input type="number" id="tariff-days" value="30"></div><div class="form-group"><label>Цена (₽)</label><input type="number" id="tariff-price" value="300"></div><div class="form-group"><label>Трафик (ГБ)</label><input type="number" id="tariff-traffic" value="10"></div><div class="form-group"><label>Устройств</label><input type="number" id="tariff-devices" value="1"></div><button class="btn btn-primary" style="width:100%" onclick="addTariff()">Добавить</button>'}
+else if(type==='balance'){title.textContent='Добавить баланс';content.innerHTML='<div class="form-group"><label>Сумма (₽)</label><input type="number" id="add-balance-amount" placeholder="500"></div><button class="btn btn-primary" style="width:100%" onclick="addBalance('+data+')">Добавить</button>'}
+modal.classList.add('active')}
+function closeModal(){document.getElementById('modal').classList.remove('active')}
+async function apiCall(endpoint,method='GET',body=null){let base='/api/admin/';let params='';if(endpoint.includes('?')){const parts=endpoint.split('?');endpoint=base+parts[0];params='&'+parts[1]}else{endpoint=base+endpoint}const url=`${endpoint}?key=${API_KEY}${params}`;const options={method,headers:{}};if(body){options.body=new URLSearchParams(body);options.headers['Content-Type']='application/x-www-form-urlencoded'}return fetch(url,options).then(r=>r.json())}
+async function loadPageData(page){if(page==='dashboard')loadStats();if(page==='users')loadUsers();if(page==='subscriptions')loadSubscriptions();if(page==='servers')loadServers();if(page==='tariffs')loadTariffs();if(page==='payments')loadPayments()}
+async function loadStats(){const data=await apiCall('stats');document.getElementById('stat-users').textContent=data.total_users||0;document.getElementById('stat-subs').textContent=data.active_subscriptions||0;document.getElementById('stat-balance').textContent='₽'+(data.total_balance||0).toLocaleString();const servers=await apiCall('servers');document.getElementById('stat-servers').textContent=(servers.servers||[]).length}
+async function loadUsers(){const data=await apiCall('users');const tbody=document.getElementById('users-table');if(!data.users||data.users.length===0){tbody.innerHTML='<tr><td colspan="5" class="empty">Нет пользователей</td></tr>';return}tbody.innerHTML=data.users.map(u=>`<tr style="cursor:pointer" onclick="viewUser(${u.id})"><td><div style="display:flex;align-items:center;gap:12px;"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#06b6d4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;">${(u.first_name||'U')[0]}</div><div><div style="font-weight:500;">${u.username||u.first_name||'Unknown'}</div><div style="color:var(--text-muted);font-size:12px;">@${u.telegram_id}</div></div></div></td><td>₽${u.balance||0}</td><td>${u.sub_count>0?'Подписки('+u.sub_count+')':'—'}</td><td><span class="status-badge ${u.is_blocked?'inactive':'active'}"><span class="dot"></span>${u.is_blocked?'Заблокирован':'Активен'}</span></td><td onclick="event.stopPropagation()"><button class="btn-icon" onclick="openModal('balance',${u.id})">💰</button><button class="btn-icon btn-danger" onclick="deleteUser(${u.id})">🗑️</button></td></tr>`).join('')}
+async function viewUser(userId){const data=await apiCall('user?user_id='+userId);if(data.error){alert(data.error);return}
+const u=data.user;const subs=data.subscriptions||[];const pays=data.payments||[];const refs=data.referrals||[];document.getElementById('user-detail-content').innerHTML=`
+<div class="user-detail-header"><div class="user-detail-avatar">${(u.first_name||'U')[0]}</div><div class="user-detail-info"><div class="user-detail-name">${u.username||u.first_name||'Unknown'}</div><div class="user-detail-username">@${u.telegram_id} • ID: ${u.id}</div></div><div style="text-align:right"><span class="status-badge ${u.is_blocked?'inactive':'active'}"><span class="dot"></span>${u.is_blocked?'Заблокирован':'Активен'}</span><div style="color:var(--text-muted);font-size:12px;margin-top:4px">Создан: ${u.created_at?u.created_at.split(' ')[0]:'—'}</div></div></div>
+<div class="user-detail-stats"><div class="user-detail-stat"><div class="user-detail-stat-value">₽${u.balance||0}</div><div class="user-detail-stat-label">Баланс</div></div><div class="user-detail-stat"><div class="user-detail-stat-value">₽${u.referral_bonus||0}</div><div class="user-detail-stat-label">Реферальные</div></div><div class="user-detail-stat"><div class="user-detail-stat-value">${subs.length}</div><div class="user-detail-stat-label">Подписки</div></div></div>
+<div class="user-tabs"><div class="user-tab active" data-tab="subs">Подписки</div><div class="user-tab" data-tab="payments">Платежи</div><div class="user-tab" data-tab="referrals">Рефералы</div></div>
+<div class="user-tab-content active" id="tab-subs">${subs.length?subs.map(s=>`<div class="item-card" style="margin-bottom:12px"><div class="item-card-header"><div class="item-card-title">#${s.id}</div><span class="status-badge ${s.status==='active'?'active':'inactive'}">${s.status}</span></div><div class="item-card-info"><div>Цена: ₽${s.price}</div><div>Дней: ${s.days} • Трафик: ${s.traffic_gb}ГБ • Устройств: ${s.devices}</div><div>Истекает: ${s.expires_at||'—'}</div></div></div>`).join(''):'<div class="empty">Нет подписок</div>'}</div>
+<div class="user-tab-content" id="tab-payments">${pays.length?pays.map(p=>`<div class="item-card" style="margin-bottom:12px"><div class="item-card-header"><div>#${p.id}</div><span class="status-badge ${p.status==='paid'?'active':'inactive'}">${p.status}</span></div><div class="item-card-price">₽${p.amount}</div><div class="item-card-info">${p.created_at||'—'}</div></div>`).join(''):'<div class="empty">Нет платежей</div>'}</div>
+<div class="user-tab-content" id="tab-referrals">${refs.length?refs.map(r=>`<div class="item-card" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:12px;"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#06b6d4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600">${(r.first_name||'U')[0]}</div><div><div style="font-weight:500">${r.username||r.first_name||'Unknown'}</div><div style="color:var(--text-muted);font-size:12px">@${r.telegram_id}</div></div></div><div style="color:var(--accent);font-weight:600">₽${r.balance||0}</div></div>`).join(''):'<div class="empty">Нет рефералов</div>'}</div>
+`;document.querySelectorAll('.user-tab').forEach(t=>{t.addEventListener('click',function(){document.querySelectorAll('.user-tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.user-tab-content').forEach(x=>x.classList.remove('active'));this.classList.add('active');document.getElementById('tab-'+this.dataset.tab).classList.add('active')})});showPage('user-detail');document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'))}
+async function loadSubscriptions(){const data=await apiCall('subscriptions');const tbody=document.getElementById('subs-table');if(!data.subscriptions||data.subscriptions.length===0){tbody.innerHTML='<tr><td colspan="6" class="empty">Нет подписок</td></tr>';return}tbody.innerHTML=data.subscriptions.map(s=>`<tr><td>#${s.id}</td><td>${s.username||s.telegram_id}</td><td>${s.days}дн / ${s.traffic_gb}ГБ</td><td>${s.expires_at||'—'}</td><td><span class="status-badge ${s.status==='active'?'active':'inactive'}"><span class="dot"></span>${s.status}</span></td><td><button class="btn-icon btn-danger">🗑️</button></td></tr>`).join('')}
+async function loadServers(){const data=await apiCall('servers');const grid=document.getElementById('servers-grid');if(!data.servers||data.servers.length===0){grid.innerHTML='<div class="empty">Нет серверов</div>';return}grid.innerHTML=data.servers.map(s=>`<div class="item-card"><div class="item-card-header"><div class="item-card-title">${s.name}</div><div class="server-status"><div class="server-dot ${s.status||'offline'}"></div>${s.status||'offline'}</div></div><div class="item-card-info"><div>IP: ${s.ip}</div><div>Хост: ${s.host}</div><div>Порт: ${s.port}</div><div>Локация: ${s.location||'—'}</div></div><div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-secondary" style="flex:1">Перезагрузка</button><button class="btn btn-danger" onclick="deleteServer(${s.id})">🗑️</button></div></div>`).join('')}
+async function loadTariffs(){const data=await apiCall('tariffs');const grid=document.getElementById('tariffs-grid');if(!data.tariffs||data.tariffs.length===0){grid.innerHTML='<div class="empty">Нет тарифов</div>';return}grid.innerHTML=data.tariffs.map(t=>`<div class="item-card"><div class="item-card-header"><div class="item-card-title">${t.name}</div><span class="status-badge ${t.is_active?'active':'inactive'}">${t.is_active?'Активен':'Неактивен'}</span></div><div class="item-card-price">₽${t.price}</div><div class="item-card-info"><div>${t.days} дней</div><div>${t.traffic_gb} ГБ</div><div>${t.devices} устройств</div></div><div style="margin-top:12px;"><button class="btn btn-danger" onclick="deleteTariff(${t.id})">Удалить</button></div></div>`).join('')}
+async function loadPayments(){const data=await apiCall('payments');const tbody=document.getElementById('payments-table');if(!data.payments||data.payments.length===0){tbody.innerHTML='<tr><td colspan="5" class="empty">Нет платежей</td></tr>';return}tbody.innerHTML=data.payments.map(p=>`<tr><td>#${p.id}</td><td>${p.user_id}</td><td>₽${p.amount}</td><td>${p.created_at||'—'}</td><td><span class="status-badge ${p.status==='paid'?'active':'inactive'}"><span class="dot"></span>${p.status}</span></td></tr>`).join('')}
+async function addServer(){const data={name:document.getElementById('server-name').value,host:document.getElementById('server-host').value,ip:document.getElementById('server-ip').value,port:document.getElementById('server-port').value,username:document.getElementById('server-username').value,location:document.getElementById('server-location').value};await apiCall('server/add','POST',data);closeModal();loadServers();loadStats()}
+async function addTariff(){const data={name:document.getElementById('tariff-name').value,days:document.getElementById('tariff-days').value,price:document.getElementById('tariff-price').value,traffic_gb:document.getElementById('tariff-traffic').value,devices:document.getElementById('tariff-devices').value};await apiCall('tariff/add','POST',data);closeModal();loadTariffs()}
+async function addBalance(userId){
+    const amount=document.getElementById('add-balance-amount').value;
+    await apiCall(`add_balance?user_id=${userId}&amount=${amount}`,'POST');
+    closeModal();loadUsers()
+}
+async function deleteServer(id){if(confirm('Удалить сервер?')){await apiCall('server/delete','POST',{server_id:id});loadServers();loadStats()}}
+async function deleteTariff(id){if(confirm('Удалить тариф?')){await apiCall('tariff/delete','POST',{tariff_id:id});loadTariffs()}}
+async function deleteUser(id){if(confirm('Удалить пользователя?')){await apiCall('user/delete','POST',{user_id:id});loadUsers()}}
+async function sendBroadcast(){const message=document.getElementById('broadcast-message').value;if(!message){alert('Введите сообщение');return}if(confirm('Отправить всем пользователям?')){const data=await apiCall('broadcast','POST',{message});alert(`Отправлено: ${data.sent}, Ошибки: ${data.failed}`);document.getElementById('broadcast-message').value=''}}
+loadPageData('dashboard');
+</script>
 </body>
 </html>

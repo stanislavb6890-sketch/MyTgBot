@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloakNet Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #18181b;
+            --bg-card: #27272a;
+            --accent: #22d3ee;
+            --accent-hover: #67e8f9;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --danger: #f87171;
+            --success: #22d3ee;
+            --warning: #fbbf24;
+            --border: #3f3f46;
+            --radius: 12px;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-right: 1px solid var(--border);
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+            padding: 10px 0 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-item {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent); color: #000; }
+        
+        /* Main */
+        .main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 { font-size: 24px; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: var(--radius);
+        }
+        
+        .stat-card .label { color: var(--text-secondary); font-size: 13px; margin-bottom: 8px; }
+        .stat-card .value { font-size: 28px; font-weight: 700; }
+        .stat-card .value.accent { color: var(--accent); }
+        .stat-card .value.danger { color: var(--danger); }
+        
+        /* Table */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .search {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 8px;
+            color: var(--text-primary);
+            width: 250px;
+        }
+        
+        table { width: 100%; border-collapse: collapse; }
+        
+        th, td { padding: 14px 20px; text-align: left; }
+        th { background: var(--bg-secondary); color: var(--text-secondary); font-weight: 500; font-size: 13px; }
+        td { border-bottom: 1px solid var(--border); }
+        
+        .status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status.active { background: rgba(34, 211, 238, 0.15); color: var(--accent); }
+        .status.inactive { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+        
+        .btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .modal {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius);
+            width: 400px;
+            max-width: 90vw;
+        }
+        
+        .modal h3 { margin-bottom: 20px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; color: var(--text-secondary); font-size: 13px; margin-bottom: 6px; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+        
+        .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">🛡️ CloakNet Admin</div>
+        
+        <div class="nav-item active">📊 Дашборд</div>
+        <div class="nav-item">👥 Пользователи</div>
+        <div class="nav-item">📦 Подписки</div>
+        <div class="nav-item">🖥 Серверы</div>
+        <div class="nav-item">💰 Тарифы</div>
+        <div class="nav-item">💳 Платежи</div>
+        <div class="nav-item">📢 Рассылки</div>
+        <div class="nav-item">⚙️ Настройки</div>
+    </div>
+    
+    <!-- Main -->
+    <div class="main">
+        <div class="header">
+            <h1>Дашборд</h1>
+            <button class="btn btn-primary">+ Добавить</button>
+        </div>
+        
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="label">Всего пользователей</div>
+                <div class="value">1,234</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Активных подписок</div>
+                <div class="value accent">856</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Доход за месяц</div>
+                <div class="value">₽124,500</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Серверов</div>
+                <div class="value">12</div>
+            </div>
+        </div>
+        
+        <!-- Users Table -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3>Последние пользователи</h3>
+                <input type="text" class="search" placeholder="Поиск...">
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Telegram</th>
+                        <th>Баланс</th>
+                        <th>Подписка</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#1234</td>
+                        <td>@username<br><span style="color:var(--text-muted)">Имя Фамилия</span></td>
+                        <td>₽500</td>
+                        <td>Премиум<br><span style="color:var(--text-muted)">до 15.04.2026</span></td>
+                        <td><span class="status active">Активен</span></td>
+                        <td>
+                            <button class="btn btn-primary">✏️</button>
+                            <button class="btn btn-danger">🗑️</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>#1233</td>
+                        <td>@username2<br><span style="color:var(--text-muted)">Имя Фамилия</span></td>
+                        <td>₽0</td>
+                        <td>—</td>
+                        <td><span class="status inactive">Неактивен</span></td>
+                        <td>
+                            <button class="btn btn-primary">✏️</button>
+                            <button class="btn btn-danger">🗑️</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Modal Example -->
+    <div class="modal-overlay" style="display:flex;">
+        <div class="modal">
+            <h3>Редактировать пользователя</h3>
+            <div class="form-group">
+                <label>Telegram ID</label>
+                <input type="text" value="2056591682" disabled>
+            </div>
+            <div class="form-group">
+                <label>Баланс</label>
+                <input type="number" value="500">
+            </div>
+            <div class="form-group">
+                <label>Статус</label>
+                <select>
+                    <option>Активен</option>
+                    <option>Заблокирован</option>
+                </select>
+            </div>
+            <div class="modal-btns">
+                <button class="btn" style="background:var(--bg-primary)">Отмена</button>
+                <button class="btn btn-primary">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

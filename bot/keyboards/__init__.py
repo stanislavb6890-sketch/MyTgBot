@@ -17,6 +17,11 @@ def get_main_keyboard(has_subscription: bool = False, has_trial: bool = False, t
     # Помощь/Поддержка
     keyboard.button(text="❓ Помощь", callback_data="help")
     
+    # Админ-панель (только для избранных)
+    from config import ADMIN_ID
+    if telegram_id == ADMIN_ID:
+        keyboard.button(text="🔧 Админ-панель", web_app=WebAppInfo(url="https://test.cloaknet.site/admin/login"))
+    
     keyboard.adjust(1, 1)
     return keyboard.as_markup()
 

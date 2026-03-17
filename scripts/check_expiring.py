@@ -28,18 +28,19 @@ async def check_expiring_subscriptions():
     expiring = cursor.fetchall()
     
     if expiring:
-        # Импортируем бота для отправки
-        from bot.main import bot
+        # Импортируем утилиту для отправки уведомлений
+        from bot.utils.notifications import send_telegram_message
         
         for sub in expiring:
             sub_id, user_id, expires_at, telegram_id = sub
             
             try:
-                await bot.send_message(
+                await send_telegram_message(
                     telegram_id,
                     f"⏰ <b>Напоминание</b>\n\n"
                     f"Ваша подписка истекает {expires_at[:10]}\n"
-                    f"Не забудьте продлить!"
+                    f"Не забудьте продлить!",
+                    parse_mode="HTML"
                 )
                 print(f"✅ Уведомление отправлено пользователю {telegram_id}")
             except Exception as e:

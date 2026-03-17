@@ -33,6 +33,7 @@ async def admin_panel(message: types.Message):
         return
     
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="🌐 Веб-админка", url="https://test.cloaknet.site/admin/login")],
         [types.InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
         [types.InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users")],
         [types.InlineKeyboardButton(text="💳 Платежи", callback_data="admin_payments")],
