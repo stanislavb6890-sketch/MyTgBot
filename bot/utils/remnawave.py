@@ -32,12 +32,25 @@ class RemnaWaveClient:
         return response.internal_squads
     
     async def add_user_to_squads(self, user_uuid: str, squad_uuids: List[str]):
-        """Добавить пользователя в сквады"""
+        """Добавить пользователя в сквады (мержит с текущими, не перезаписывает)"""
         from remnawave.models import UpdateUserRequestDto
+        
+        # Получаем текущие сквады пользователя
+        current_user = await self.get_user(user_uuid)
+        current_squads = []
+        if hasattr(current_user, 'response') and current_user.response:
+            resp = current_user.response
+            if hasattr(resp, 'active_internal_squads') and resp.active_internal_squads:
+                current_squads = [str(s.uuid) for s in resp.active_internal_squads]
+        
+        # Мержим: добавляем новые сквады, которых ещё нет
+        for sq in squad_uuids:
+            if sq not in current_squads:
+                current_squads.append(sq)
         
         body = UpdateUserRequestDto(
             uuid=user_uuid,
-            active_internal_squads=squad_uuids
+            active_internal_squads=current_squads
         )
         await self.sdk.users.update_user(body=body)
         """Найти ноду по имени"""
@@ -53,7 +66,9 @@ class RemnaWaveClient:
         traffic_limit_bytes: int = 10 * 1024 * 1024 * 1024,
         expire_days: int = 30,
         is_disabled: bool = True,
-        telegram_id: int = None,
+        description: str = None,
+        tag: str = None,
+        active_squads: list = None,
         traffic_reset: str = "NO_RESET",
         devices_limit: int = 1
     ) -> dict:
@@ -75,6 +90,15 @@ class RemnaWaveClient:
         if traffic_reset not in valid_strategies:
             traffic_reset = "NO_RESET"
         
+        # Преобразуем squad UUIDs в UUID объекты
+        from uuid import UUID
+        squads_list = None
+        if active_squads:
+            try:
+                squads_list = [UUID(s) for s in active_squads]
+            except:
+                pass
+        
         try:
             body = CreateUserRequestDto(
                 username=username,
@@ -86,7 +110,9 @@ class RemnaWaveClient:
                 vless_uuid=vless_uuid,
                 trojan_password=trojan_password,
                 ss_password=ss_password,
-                telegram_id=telegram_id,
+                description=description,
+                tag=tag,
+                active_internal_squads=squads_list,
             )
             
             response = await self.sdk.users.create_user(body=body)
@@ -165,7 +191,9 @@ async def create_vpn_user(
     traffic_limit_bytes: int,
     expire_days: int,
     is_disabled: bool = True,
-    telegram_id: int = None,
+    description: str = None,
+    tag: str = None,
+    active_squads: list = None,
     traffic_reset: str = "NO_RESET",
     devices_limit: int = 1
 ) -> dict:
@@ -176,7 +204,9 @@ async def create_vpn_user(
         traffic_limit_bytes=traffic_limit_bytes,
         expire_days=expire_days,
         is_disabled=is_disabled,
-        telegram_id=telegram_id,
+        description=description,
+        tag=tag,
+        active_squads=active_squads,
         traffic_reset=traffic_reset,
         devices_limit=devices_limit
     )

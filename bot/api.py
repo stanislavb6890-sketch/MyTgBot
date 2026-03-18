@@ -572,7 +572,8 @@ async def create_subscription_api(request):
     traffic = int(request.query.get('traffic', '10'))
     devices = int(request.query.get('devices', '1'))
     servers_param = request.query.get('servers', '')
-    servers = servers_param.split(',') if servers_param else []
+    # Уникальные серверы с сохранением порядка
+    servers = list(dict.fromkeys([s for s in servers_param.split(',') if s])) if servers_param else []
     
     # Маппинг reset типа на стратегию RemnaWave
     traffic_reset_map = {
@@ -668,18 +669,12 @@ async def create_subscription_api(request):
     
     # Создаём пользователя в RemnaWave (выключен до оплаты)
     try:
-        vpn_user = await create_vpn_user(
-            username=vpn_username,
-            traffic_limit_bytes=traffic * (1024**3),
-            expire_days=days,
-            is_disabled=True,
-            telegram_id=telegram_id,
-            traffic_reset=traffic_reset,
-            devices_limit=devices
-        )
-        sub_uuid = vpn_user["uuid"]
+        import time, random
+        # Генерируем уникальное описание и тег
+        description = f"sub_{int(time.time())}_{random.randint(1000,9999)}_{telegram_id}"
         
-        # Добавляем пользователя в выбранные сквады
+        # Получаем UUID сквадов для выбранных серверов
+        squad_uuids = []
         if servers:
             try:
                 from remnawave import RemnawaveSDK
@@ -704,28 +699,25 @@ async def create_subscription_api(request):
                         country_to_uuid["RU"] = str(s.uuid)
                 
                 # Выбираем UUID для выбранных серверов
-                squad_uuids = []
                 for server_code in servers:
                     if server_code in country_to_uuid:
                         squad_uuids.append(country_to_uuid[server_code])
-                
-                # Добавляем пользователя в сквады
-                if squad_uuids:
-                    for squad_uuid in squad_uuids:
-                        try:
-                            # Используем прямой HTTP вызов
-                            response = await sdk.internal_squads.client.request(
-                                method='POST',
-                                url=f'/internal-squads/{squad_uuid}/bulk-actions/add-users',
-                                json={'userUuids': [vpn_user["uuid"]]}
-                            )
-                            if response.status_code != 200:
-                                logger.error(f"Ошибка добавления в сквад {squad_uuid}: {response.text}")
-                        except Exception as sq_e:
-                            logger.error(f"Ошибка добавления в сквад {squad_uuid}: {sq_e}")
-                    logger.info(f"✅ Пользователь {vpn_username} добавлен в сквады: {squad_uuids}")
             except Exception as e:
-                logger.error(f"Ошибка добавления в сквады: {e}")
+                logger.error(f"Ошибка получения сквадов: {e}")
+        
+        # Создаём VPN пользователя со сквадами
+        vpn_user = await create_vpn_user(
+            username=vpn_username,
+            traffic_limit_bytes=traffic * (1024**3),
+            expire_days=days,
+            is_disabled=True,
+            description=description,
+            active_squads=squad_uuids if squad_uuids else None,
+            traffic_reset=traffic_reset,
+            devices_limit=devices
+        )
+        sub_uuid = vpn_user["uuid"]
+        
     except Exception as e:
         logger.error(f"Ошибка создания VPN пользователя: {e}")
         return web.json_response({'error': f'Ошибка создания VPN: {str(e)}'}, status=500)
@@ -829,13 +821,17 @@ async def create_trial_subscription(request):
     from bot.utils.remnawave import create_vpn_user
     
     try:
+        # Генерируем уникальное описание: trial_{timestamp}_{random}_{telegram_id}
+        import time, random
+        description = f"trial_{int(time.time())}_{random.randint(1000,9999)}_{telegram_id}"
+        
         # Создаём VPN пользователя (сразу активен)
         vpn_user = await create_vpn_user(
             username=vpn_username,
             traffic_limit_bytes=TRIAL_TRAFFIC * (1024**3),
             expire_days=TRIAL_DAYS,
             is_disabled=False,  # Сразу активен
-            telegram_id=telegram_id,
+            description=description,
             traffic_reset="NO_RESET",
             devices_limit=TRIAL_DEVICES
         )
@@ -996,7 +992,8 @@ async def renew_subscription(request):
     traffic = int(request.query.get('traffic', '10'))
     devices = int(request.query.get('devices', '1'))
     servers_param = request.query.get('servers', '')
-    servers = servers_param.split(',') if servers_param else []
+    # Уникальные серверы с сохранением порядка
+    servers = list(dict.fromkeys([s for s in servers_param.split(',') if s])) if servers_param else []
     traffic_reset_param = request.query.get('traffic_reset', 'monthly')
     
     if not telegram_id or not sub_id:
@@ -1355,13 +1352,14 @@ async def pay_with_balance(request):
     # Активируем VPN в панели
     if uuid:
         try:
-            # Используем синхронный подход для aiohttp
+            # Используем путь к venv python
             import subprocess
             result = subprocess.run(
-                ['python3', '-c', f'''
+                ['/root/.openclaw/workspace/vpn-bot/venv/bin/python3', '-c', f'''
 import asyncio
-from bot.utils.remnawave import enable_vpn_user, add_user_to_squads
-import asyncio
+import sys
+sys.path.insert(0, "/root/.openclaw/workspace/vpn-bot")
+from bot.utils.remnawave import enable_vpn_user
 asyncio.run(enable_vpn_user("{uuid}"))
 '''],
                 capture_output=True,
