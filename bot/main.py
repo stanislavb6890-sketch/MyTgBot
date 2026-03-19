@@ -9,7 +9,7 @@ from aiohttp import web
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aiogram import Bot, Dispatcher
-from aiogram.types import ErrorEvent
+from aiogram.types import ErrorEvent, BotCommand
 from config import BOT_TOKEN, WEBHOOK_URL, ADMIN_ID
 from bot.utils.database import init_db
 from bot.handlers import (
@@ -43,6 +43,21 @@ async def on_startup(bot: Bot):
     # Инициализация БД
     init_db()
     logger.info("✅ База данных инициализирована")
+    
+    # Регистрируем команды бота с русскими описаниями
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Перезапустить бота"),
+        BotCommand(command="help", description="Помощь и FAQ"),
+        BotCommand(command="support", description="Написать в поддержку"),
+        BotCommand(command="mytickets", description="Мои тикеты"),
+        BotCommand(command="admin", description="Админ-панель"),
+        BotCommand(command="stats", description="Статистика бота"),
+        BotCommand(command="users", description="Список пользователей"),
+        BotCommand(command="payments", description="История платежей"),
+        BotCommand(command="subs", description="Все подписки"),
+        BotCommand(command="tickets", description="Тикеты (админ)"),
+    ])
+    logger.info("✅ Команды бота зарегистрированы")
 
 
 async def on_shutdown(bot: Bot):

@@ -2184,6 +2184,43 @@ async def admin_delete_user(request):
     return web.json_response({'success': True})
 
 
+async def admin_delete_subscription(request):
+    """Удалить подписку (админ)"""
+    admin_key = request.query.get('key')
+    if admin_key != 'admin_secret_key_2026':
+        return web.json_response({'error': 'unauthorized'}, status=401)
+    
+    try:
+        data = await request.post() if 'application/json' not in request.headers.get('Content-Type', '') else await request.json()
+    except:
+        data = await request.post()
+    
+    sub_id = int(data.get('sub_id'))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Получаем UUID для удаления из RemnaWave
+    cursor.execute("SELECT remnawave_uuid FROM subscriptions WHERE id = ?", (sub_id,))
+    row = cursor.fetchone()
+    
+    if row:
+        uuid = row[0]
+        # Удаляем из RemnaWave
+        try:
+            from bot.utils.remnawave import delete_vpn_user
+            delete_vpn_user(uuid)
+        except:
+            pass
+    
+    cursor.execute('DELETE FROM subscriptions WHERE id = ?', (sub_id,))
+    cursor.execute('DELETE FROM subscription_servers WHERE subscription_id = ?', (sub_id,))
+    conn.commit()
+    conn.close()
+    
+    return web.json_response({'success': True})
+
+
 # === Админ авторизация ===
 import hashlib
 import secrets
@@ -2301,6 +2338,7 @@ def setup_api_routes(app):
     app.router.add_post('/api/admin/user/block', admin_block_user)
     app.router.add_post('/api/admin/user/unblock', admin_unblock_user)
     app.router.add_post('/api/admin/user/delete', admin_delete_user)
+    app.router.add_post('/api/admin/subscription/delete', admin_delete_subscription)
     
     # Авторизация
     app.router.add_post('/api/admin/login', admin_login)

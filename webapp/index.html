@@ -1378,7 +1378,8 @@
             `;
             
             subscriptions.forEach(sub => {
-                const trafficPercent = (sub.traffic_used / sub.traffic_limit) * 100;
+                const isUnlimited = sub.traffic_limit === 0;
+                const trafficPercent = isUnlimited ? 0 : (sub.traffic_used / sub.traffic_limit) * 100;
                 const isActive = sub.status === 'active' && sub.is_paid;
                 const isPaid = sub.is_paid;
                 const isTrial = sub.is_trial;
@@ -1411,6 +1412,9 @@
                             </div>
                             <div class="traffic-bar" style="height: 14px;">
                                 <div class="traffic-fill" style="width: ${progressPercent}%; background: ${daysLeft < 7 ? 'var(--danger)' : 'var(--accent)'};"></div>
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 8px; text-align: center;">
+                                📅 Создана: ${new Date(sub.created_at).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: 'numeric'})} в ${new Date(sub.created_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'})}
                             </div>
                         </div>
                         
@@ -1502,7 +1506,8 @@
             const content = document.getElementById('content');
             const sub = selectedSubscription;
             
-            const trafficPercent = (sub.traffic_used / sub.traffic_limit) * 100;
+            const isUnlimited = sub.traffic_limit === 0;
+            const trafficPercent = isUnlimited ? 0 : (sub.traffic_used / sub.traffic_limit) * 100;
             const isActive = sub.status === 'active' && sub.is_paid;
             const isPaid = sub.is_paid;
             const isTrial = sub.is_trial;
@@ -1529,6 +1534,10 @@
                         <span style="color: var(--text-secondary);">📅 Дата истечения</span>
                         <span style="font-weight: 500;">${formatDate(sub.expires_at)}</span>
                     </div>
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                        <span style="color: var(--text-secondary);">📅 Создана</span>
+                        <span style="font-weight: 500; color: var(--text-muted);">${formatDate(sub.created_at)}</span>
+                    </div>
                     <div style="display: flex; justify-content: space-between; padding: 12px 0;">
                         <span style="color: var(--text-secondary);">📱 Устройства</span>
                         <span style="font-weight: 500;">${sub.devices}</span>
@@ -1536,11 +1545,9 @@
                     <div style="padding: 12px 0; border-top: 1px solid var(--border);">
                         <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
                             <span>📊 Трафик</span>
-                            <span>${Math.round(trafficPercent)}% · ${sub.traffic_used.toFixed(1)} / ${sub.traffic_limit} GB</span>
+                            <span>${isUnlimited ? '∞ Безлимит' : Math.round(trafficPercent) + '% · ' + sub.traffic_used.toFixed(1) + ' / ' + sub.traffic_limit + ' GB'}</span>
                         </div>
-                        <div class="traffic-bar" style="height: 14px;">
-                            <div class="traffic-fill" style="width: ${trafficPercent}%; background: var(--accent);"></div>
-                        </div>
+                        ${isUnlimited ? '' : '<div class="traffic-bar" style="height: 14px;"><div class="traffic-fill" style="width: ' + trafficPercent + '%; background: var(--accent);"></div></div>'}
                     </div>
                 </div>
                 
@@ -2231,10 +2238,8 @@
                 const servers = [
                     { id: 'RU', name: '🇷🇺 Россия', extra: 0 },
                     { id: 'FI', name: '🇫🇮 Finland', extra: 0 },
-                    { id: 'DE', name: '🇩🇪 Germany', extra: 0 },
                     { id: 'UK', name: '🇬🇧 UK', extra: 0 },
-                    { id: 'NL', name: '🇳🇱 Netherlands', extra: 0 },
-                    { id: 'FR', name: '🇫🇷 France', extra: 0 }
+                    { id: 'NL', name: '🇳🇱 Netherlands', extra: 0 }
                 ];
                 
                 let chipsHtml = '';
@@ -2292,7 +2297,7 @@
                 // Шаг 3: Итог + Оплата
                 const p = calculatePrice();
                 const serverNames = createData.servers.length > 0 
-                    ? createData.servers.map(id => ({'RU':'🇷🇺 Россия','FI':'🇫🇮 Finland','DE':'🇩🇪 Germany','UK':'🇬🇧 UK','NL':'🇳🇱 Netherlands','FR':'🇫🇷 France'}[id] || id)).join(', ')
+                    ? createData.servers.map(id => ({'RU':'🇷🇺','FI':'🇫🇮','UK':'🇬🇧','NL':'🇳🇱'}[id] || id)).join(', ')
                     : 'Не выбраны';
                 const months = PERIOD_DAYS[createData.period] || 1;
                 const extraDevices = Math.max(0, createData.devices - 1);
@@ -2455,7 +2460,7 @@
             
             try {
                 const serversParam = createData.servers.join(',') || 'RU';
-                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.period}&traffic=${createData.unlimited ? 999999 : 50}&devices=${createData.devices}&servers=${serversParam}&traffic_reset=no_reset&price=${price.total}`;
+                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.period}&traffic=${createData.unlimited ? 0 : 50}&devices=${createData.devices}&servers=${serversParam}&traffic_reset=no_reset&price=${price.total}`;
                 
                 const response = await fetch(url, { method: 'POST' });
                 const data = await response.json();
