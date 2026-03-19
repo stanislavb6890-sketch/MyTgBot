@@ -533,6 +533,73 @@
             opacity: 0.7;
         }
         
+        /* ── Base Tariff Card ── */
+        .base-tariff-card {
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.08) 0%, rgba(0, 212, 170, 0.05) 100%);
+            border: 1px solid var(--accent-muted);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .base-tariff-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .base-tariff-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .base-tariff-badge {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent);
+            background: rgba(34, 211, 238, 0.15);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--accent-muted);
+        }
+        
+        .base-tariff-features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .base-feature {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+        
+        .base-feature-icon {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 6px;
+        }
+        
+        .base-feature-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .base-feature-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent);
+            display: block;
+        }
+        
         /* ── Summary Card ── */
         .summary-card {
             background: linear-gradient(135deg, rgba(34, 211, 238, 0.08) 0%, rgba(0, 212, 170, 0.05) 100%);
@@ -2130,14 +2197,33 @@
                 });
                 
                 html += `
-                    <div class="section-title">⏱️ Выберите период подписки</div>
-                    <div class="period-grid">${presetsHtml}</div>
-                    <div class="card" style="margin-top: 8px;">
-                        <div style="font-size: 13px; color: var(--text-muted); text-align: center;">
-                            Трафик: <span style="color: var(--accent); font-weight: 600;">50 GB</span> включено &nbsp;•&nbsp; 
-                            Устройств: <span style="color: var(--accent); font-weight: 600;">1</span> включено
+                    <div class="section-title">🎁 Что входит в тариф</div>
+                    <div class="base-tariff-card">
+                        <div class="base-tariff-header">
+                            <span class="base-tariff-name">Базовый тариф</span>
+                            <span class="base-tariff-badge">Включено</span>
+                        </div>
+                        <div class="base-tariff-features">
+                            <div class="base-feature">
+                                <span class="base-feature-icon">📊</span>
+                                <span class="base-feature-label">Трафик</span>
+                                <span class="base-feature-value">50 GB</span>
+                            </div>
+                            <div class="base-feature">
+                                <span class="base-feature-icon">📱</span>
+                                <span class="base-feature-label">Устройства</span>
+                                <span class="base-feature-value">1</span>
+                            </div>
+                            <div class="base-feature">
+                                <span class="base-feature-icon">🌍</span>
+                                <span class="base-feature-label">Серверы</span>
+                                <span class="base-feature-value">1 сервер входит</span>
+                            </div>
                         </div>
                     </div>
+                    
+                    <div class="section-title">⏱️ Выберите период</div>
+                    <div class="period-grid">${presetsHtml}</div>
                     ${renderPricePanel()}
                 `;
             } else if (createData.step === 2) {
@@ -2179,8 +2265,9 @@
                         </div>
                     </div>
                     
-                    <div class="section-title">🌍 Серверы</div>
+                    <div class="section-title">🌍 Выберите серверы</div>
                     <div class="chips-grid">${chipsHtml}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 12px;">1 сервер входит в тариф · со 2-го +45₽/мес</div>
                     
                     <div class="section-title">📊 Трафик</div>
                     <div class="card">
@@ -2226,8 +2313,8 @@
                             <span class="value">${createData.devices} ${extraDevices > 0 ? `(+${extraDevices} доп.)` : ''}</span>
                         </div>
                         <div class="summary-row">
-                            <span class="label">Серверы</span>
-                            <span class="value" style="font-size: 12px;">${serverNames}</span>
+                            <span class="label">Серверы (${createData.servers.length})</span>
+                            <span class="value" style="font-size: 12px;">${p.servers > 0 ? '+' + p.servers + ' ₽' : 'бесплатно'}</span>
                         </div>
                         <div class="summary-row total">
                             <span class="label">Итого</span>
@@ -2248,9 +2335,13 @@
         }
         
         function toggleServer(id) {
+            // Multi-select: можно выбрать несколько серверов
             const idx = createData.servers.indexOf(id);
-            if (idx > -1) createData.servers.splice(idx, 1);
-            else createData.servers.push(id);
+            if (idx > -1) {
+                createData.servers.splice(idx, 1);
+            } else {
+                createData.servers.push(id);
+            }
             renderCreateStep();
         }
             
@@ -2266,31 +2357,51 @@
             // Безлимит: +100₽ фиксированно
             const unlimitedPrice = createData.unlimited ? 100 : 0;
             
-            const total = basePrice + devicesPrice + unlimitedPrice;
+            // Серверы: 1-й бесплатный, со 2-го +45₽/мес (фиксированно)
+            const serversCount = Math.max(0, createData.servers.length - 1);
+            const serversPrice = serversCount * 45;
+            
+            const total = basePrice + devicesPrice + unlimitedPrice + serversPrice;
             
             return {
                 base: basePrice,
                 devices: devicesPrice,
                 unlimited: unlimitedPrice,
+                servers: serversPrice,
                 total: total
             };
         }
         
         function renderPricePanel() {
             const p = calculatePrice();
+            const serverCount = createData.servers.length || 0;
+            const serverNote = createData.servers.length > 0 
+                ? (p.servers > 0 ? `${createData.servers.length} сервера (+${p.servers}₽)` : '1 сервер бесплатно')
+                : 'выберите серверы';
+            
             return `
                 <div class="floating-price">
                     <div class="floating-price-inner">
                         <div>
-                            <div class="floating-price-label">К оплате</div>
+                            <div class="floating-price-label">К оплате · ${serverNote}</div>
                             <div class="floating-price-value">${p.total} ₽</div>
                         </div>
-                        <button class="btn btn-primary" onclick="createData.step = 3; renderCreateStep();" style="width: auto; margin-top: 0; padding: 12px 24px;">
+                        <button class="btn btn-primary" onclick="goToStepFromServers();" style="width: auto; margin-top: 0; padding: 12px 24px;">
                             Далее →
                         </button>
                     </div>
                 </div>
             `;
+        }
+        
+        function goToStepFromServers() {
+            if (createData.servers.length === 0) {
+                if (tg) tg.showAlert('⚠️ Пожалуйста, выберите хотя бы 1 сервер');
+                else alert('⚠️ Пожалуйста, выберите хотя бы 1 сервер');
+                return;
+            }
+            createData.step = 3;
+            renderCreateStep();
         }
         
         async function createTrial() {
