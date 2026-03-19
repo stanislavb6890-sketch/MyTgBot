@@ -31,34 +31,81 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Inter', system-ui, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html {
+            scroll-behavior: smooth;
         }
         
         body {
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            padding-bottom: 80px;
+            padding-bottom: 100px;
+            -webkit-font-smoothing: antialiased;
         }
         
         .header {
-            background: var(--bg-secondary);
-            padding: 16px 20px;
+            background: rgba(24, 24, 27, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 14px 20px;
             position: sticky;
             top: 0;
             z-index: 100;
             border-bottom: 1px solid var(--border);
         }
         
-        .header h1 {
-            font-size: 22px;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .header-logo {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent) 0%, #00d4aa 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+        
+        .header-balance {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+        
+        .header-balance-value {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 15px;
+        }
+        
+        .header-topup {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 10px;
+            border: 1px solid var(--accent-muted);
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        
+        .header-topup:active {
+            background: var(--accent-muted);
         }
         
         .container {
-            padding: 20px;
+            padding: 16px 16px 120px;
+            max-width: 600px;
+            margin: 0 auto;
         }
         
         .stats-grid {
@@ -201,34 +248,46 @@
         
         .btn {
             width: 100%;
-            padding: 14px;
+            padding: 14px 20px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.15s ease;
-            margin-top: 12px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         
         .btn:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
         }
         
         .btn-primary {
-            background: var(--accent);
+            background: linear-gradient(135deg, var(--accent) 0%, #00d4aa 100%);
             color: #000;
+            font-weight: 700;
+            box-shadow: 0 4px 16px rgba(34, 211, 238, 0.3);
         }
         
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            box-shadow: 0 4px 20px rgba(34, 211, 238, 0.25);
+        .btn-primary:active {
+            box-shadow: 0 2px 8px rgba(34, 211, 238, 0.2);
         }
         
         .btn-secondary {
-            background: var(--bg-secondary);
+            background: var(--bg-card);
             color: var(--text-primary);
             border: 1px solid var(--border);
+        }
+        
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            margin-top: 0;
         }
         
         .btn-secondary:hover {
@@ -251,6 +310,311 @@
             justify-content: center;
             align-items: center;
             padding: 40px;
+        }
+        
+        /* ── Floating Price Panel ── */
+        .floating-price {
+            position: fixed;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            background: rgba(24, 24, 27, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            padding: 14px 16px;
+            z-index: 90;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .floating-price-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .floating-price-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        
+        .floating-price-value {
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent) 0%, #00d4aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .floating-price-note {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        
+        /* ── Period Presets ── */
+        .period-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 16px 0;
+        }
+        
+        .period-preset {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .period-preset:active {
+            transform: scale(0.96);
+        }
+        
+        .period-preset.selected {
+            border-color: var(--accent);
+            background: rgba(34, 211, 238, 0.08);
+        }
+        
+        .period-preset .p-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .period-preset.selected .p-label {
+            color: var(--accent);
+        }
+        
+        .period-preset .p-price {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        
+        .period-preset .p-note {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* ── 3-Step Indicator ── */
+        .steps-3 {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 0 4px;
+        }
+        
+        .step-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+        
+        .step-item::after {
+            content: '';
+            position: absolute;
+            top: 14px;
+            left: 55%;
+            width: 90%;
+            height: 2px;
+            background: var(--border);
+        }
+        
+        .step-item:last-child::after {
+            display: none;
+        }
+        
+        .step-item.done::after {
+            background: var(--accent);
+        }
+        
+        .step-circle {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            z-index: 1;
+        }
+        
+        .step-item.active .step-circle {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+        }
+        
+        .step-item.done .step-circle {
+            background: var(--accent-muted);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        
+        .step-name {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        
+        .step-item.active .step-name {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        
+        /* ── Server Chips ── */
+        .chips-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        
+        .chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        
+        .chip:active {
+            transform: scale(0.96);
+        }
+        
+        .chip.selected {
+            border-color: var(--accent);
+            background: rgba(34, 211, 238, 0.1);
+            color: var(--accent);
+        }
+        
+        .chip-check {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            flex-shrink: 0;
+        }
+        
+        .chip.selected .chip-check {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+        }
+        
+        .chip-price {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        
+        /* ── Summary Card ── */
+        .summary-card {
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.08) 0%, rgba(0, 212, 170, 0.05) 100%);
+            border: 1px solid var(--accent-muted);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .summary-row:last-child {
+            border-bottom: none;
+            padding-top: 12px;
+        }
+        
+        .summary-row .label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .summary-row .value {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .summary-row.total {
+            font-size: 18px;
+        }
+        
+        .summary-row.total .value {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent) 0%, #00d4aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* ── Modern Cards ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .card:active {
+            transform: scale(0.99);
+        }
+        
+        /* ── Empty State ── */
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+        }
+        
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+        
+        .empty-state h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.5;
         }
         
         .spinner {
@@ -637,13 +1001,12 @@
 </head>
 <body>
     <div class="header">
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <h1>CloakNet</h1>
-            <div id="header-balance" style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: var(--text-secondary); font-size: 13px;">Баланс:</span>
-                <span id="header-balance-value" style="color: var(--accent); font-weight: 700;">—</span>
-                <span style="color: var(--accent);">₽</span>
-                <span onclick="topupBalance()" style="cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 500;">+ Пополнить</span>
+        <div class="header-inner">
+            <div class="header-logo">🛡️ CloakNet</div>
+            <div class="header-balance">
+                <span id="header-balance-value" class="header-balance-value">—</span>
+                <span style="color: var(--text-secondary);">₽</span>
+                <span class="header-topup" onclick="topupBalance()">+ Пополнить</span>
             </div>
         </div>
     </div>
@@ -670,33 +1033,39 @@
     </nav>
     
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
+        // Инициализация Telegram SDK (загружен с CDN)
+        // Telegram WebApp инжектит свой SDK в same-origin webview, 
+        // CDN версия работает как fallback для cross-origin или раннего доступа
+        const tg = window.Telegram?.WebApp;
         
-        // Если открыто в браузере (не в WebApp) - показать кнопку возврата
-        if (!tg.initDataUnsafe?.user?.id) {
-            document.body.innerHTML = `
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;background:var(--bg-primary);color:var(--text-primary);font-family:system-ui,sans-serif;">
-                    <div style="font-size:48px;margin-bottom:20px;">🔄</div>
-                    <h2 style="margin-bottom:15px;">Платёж завершён!</h2>
-                    <p style="color:var(--text-secondary);margin-bottom:30px;">Вернитесь в мини-приложение Telegram для продолжения</p>
-                    <button id="openAppBtn" style="background:var(--accent);color:#000;padding:15px 30px;border-radius:12px;font-weight:600;border:none;cursor:pointer;font-size:16px;">🚀 Открыть мини-приложение</button>
-                </div>
-            `;
-            
-            // Обработчик для кнопки
-            document.getElementById('openAppBtn').addEventListener('click', function() {
-                // Пробуем разные способы открытия
-                const appUrl = 'https://t.me/cloaknetvbot/app';
-                if (typeof tg.openLink === 'function') {
-                    tg.openLink(appUrl);
-                } else if (typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(appUrl);
-                } else {
-                    window.location.href = appUrl;
-                }
-            });
+        // Если SDK загружен — инициализируем
+        if (tg) {
+            tg.expand();
+            tg.ready();
+        }
+        
+        // Если открыто в браузере (НЕ в WebApp) без user_id — показать кнопку возврата
+        // Но CDN SDK всё равно даст базовый API, просто без initData
+        const hasUser = tg?.initDataUnsafe?.user?.id;
+        if (!hasUser) {
+            // Проверяем URL параметр user_id как fallback
+            const params = new URLSearchParams(window.location.search);
+            const urlUserId = params.get('user_id') || params.get('telegram_id');
+            if (!urlUserId) {
+                // Совсем без user — показываем заглушку браузера
+                document.body.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;background:var(--bg-primary);color:var(--text-primary);font-family:system-ui,sans-serif;">
+                        <div style="font-size:48px;margin-bottom:20px;">🔄</div>
+                        <h2 style="margin-bottom:15px;">Платёж завершён!</h2>
+                        <p style="color:var(--text-secondary);margin-bottom:30px;">Вернитесь в мини-приложение Telegram для продолжения</p>
+                        <button id="openAppBtn" style="background:var(--accent);color:#000;padding:15px 30px;border-radius:12px;font-weight:600;border:none;cursor:pointer;font-size:16px;">🚀 Открыть мини-приложение</button>
+                    </div>
+                `;
+                document.getElementById('openAppBtn')?.addEventListener('click', function() {
+                    window.location.href = 'https://t.me/cloaknetvbot/app';
+                });
+                // Не выходим — данные загрузятся через fallback ниже
+            }
         }
         
         // Данные пользователя
@@ -705,15 +1074,19 @@
         let currentPage = 'subscriptions';
         let selectedSubscription = null;
         
-        // Данные для создания тарифа
+        // Данные для создания подписки (новый план)
         let createData = {
-            days: 30,
-            traffic: 10,
-            traffic_reset: 'no_reset',
-            devices: 1,
+            period: 30,  // days: 14, 30, 90, 180, 365
             servers: [],
+            devices: 1,
+            unlimited: false,
             step: 1
         };
+        
+        // Фиксированные цены
+        const PERIOD_PRICES = { 14: 79, 30: 129, 90: 349, 180: 619, 365: 999 };
+        const PERIOD_LABELS = { 14: '2 недели', 30: '1 месяц', 90: '3 месяца', 180: '6 месяцев', 365: '1 год' };
+        const PERIOD_DAYS  = { 14: 2, 30: 1, 90: 3, 180: 6, 365: 12 };  // в месяцах для расчёта
         
         // Кэш сквадов
         let squadsCache = null;
@@ -739,22 +1112,22 @@
             renderCreateStep();
         }
         
-        // Сброс трафика
-        const resetOptions = [
-            { value: 'daily', label: 'Раз в сутки' },
-            { value: 'weekly', label: 'Раз в неделю' },
-            { value: 'monthly', label: 'Раз в месяц' },
-            { value: 'no_reset', label: 'Никогда' }
-        ];
-        
         const API_BASE = 'https://test.cloaknet.site';
         
         // Загрузка данных
         async function loadData() {
             showLoading();
             
+            // Failsafe: если ничего не загрузилось за 10 сек — показываем контент
+            var failsafeTimer = setTimeout(function() {
+                console.warn('Failsafe: показываю контент');
+                userData = userData || { has_trial: false };
+                subscriptions = subscriptions || [];
+                renderSubscriptions();
+            }, 10000);
+            
             let telegramId = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 telegramId = tg.initDataUnsafe.user.id;
             }
             if (!telegramId) {
@@ -763,13 +1136,17 @@
             }
             
             if (!telegramId) {
+                clearTimeout(failsafeTimer);
                 renderSubscriptions();
                 return;
             }
             
             try {
-                const response = await fetch(`${API_BASE}/api/user?user_id=${telegramId}`);
+                const response = await fetch(`${API_BASE}/api/user?user_id=${telegramId}`, { 
+                    signal: AbortSignal.timeout(12000) 
+                });
                 const data = await response.json();
+                clearTimeout(failsafeTimer);
                 
                 userData = data.user;
                 subscriptions = data.subscriptions || [];
@@ -780,6 +1157,7 @@
                     balanceEl.textContent = userData.balance.toFixed(0);
                 }
             } catch (e) {
+                clearTimeout(failsafeTimer);
                 console.error('Error loading data:', e);
             }
             
@@ -787,7 +1165,7 @@
             
             // Проверяем URL параметр для автообновления
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('refresh') === '1') {
+            if (urlParams.get('refresh') === '1' && tg) {
                 tg.showAlert('✅ Данные обновлены!');
                 // Очищаем URL
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -806,7 +1184,7 @@
         
         function topupBalance() {
             let telegramId = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 telegramId = tg.initDataUnsafe.user.id;
             }
             if (!telegramId) {
@@ -863,7 +1241,7 @@
         
         function payWithBalance(subId, price) {
             let telegramId = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 telegramId = tg.initDataUnsafe.user.id;
             }
             if (!telegramId) {
@@ -1272,7 +1650,7 @@
         
         function closeApp() {
             try {
-                if (typeof tg.close === 'function') {
+                if (tg && typeof tg.close === 'function') {
                     tg.close();
                 } else {
                     window.location.href = 'https://t.me/cloaknetvbot';
@@ -1311,7 +1689,7 @@
             currentPage = 'referrals';
             
             let tid = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 tid = tg.initDataUnsafe.user.id;
             }
             if (!tid) {
@@ -1473,7 +1851,7 @@
             
             // Get telegramId
             let tid = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 tid = tg.initDataUnsafe.user.id;
             }
             if (!tid) {
@@ -1525,7 +1903,7 @@
             
             // Get telegramId
             let tid = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 tid = tg.initDataUnsafe.user.id;
             }
             if (!tid) {
@@ -1600,7 +1978,7 @@
             showLoading();
             
             let telegramId = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 telegramId = tg.initDataUnsafe.user.id;
             }
             if (!telegramId) {
@@ -1716,210 +2094,152 @@
         function renderCreateStep() {
             const content = document.getElementById('content');
             
-            // Прогресс бар
-            let progressHtml = `
-                <div class="progress-steps">
-                    <div class="step ${createData.step >= 1 ? 'active' : ''} ${createData.step > 1 ? 'done' : ''}">
-                        <div class="step-circle">${createData.step > 1 ? '✓' : '1'}</div>
-                        <div class="step-label">Период</div>
-                    </div>
-                    <div class="step ${createData.step >= 2 ? 'active' : ''} ${createData.step > 2 ? 'done' : ''}">
-                        <div class="step-circle">${createData.step > 2 ? '✓' : '2'}</div>
-                        <div class="step-label">Трафик</div>
-                    </div>
-                    <div class="step ${createData.step >= 3 ? 'active' : ''} ${createData.step > 3 ? 'done' : ''}">
-                        <div class="step-circle">${createData.step > 3 ? '✓' : '3'}</div>
-                        <div class="step-label">Устройства</div>
-                    </div>
-                    <div class="step ${createData.step >= 4 ? 'active' : ''} ${createData.step > 4 ? 'done' : ''}">
-                        <div class="step-circle">${createData.step > 4 ? '✓' : '4'}</div>
-                        <div class="step-label">Серверы</div>
-                    </div>
-                    <div class="step ${createData.step >= 5 ? 'active' : ''}">
-                        <div class="step-circle">5</div>
-                        <div class="step-label">Оплата</div>
-                    </div>
-                </div>
-            `;
+            // 3-step indicator
+            const steps = [
+                { n: 1, name: 'Период' },
+                { n: 2, name: 'Серверы' },
+                { n: 3, name: 'Оплата' }
+            ];
             
-            let html = progressHtml;
+            let stepsHtml = '<div class="steps-3">';
+            steps.forEach((s, i) => {
+                const isActive = createData.step === s.n;
+                const isDone = createData.step > s.n;
+                stepsHtml += `
+                    <div class="step-item ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}">
+                        <div class="step-circle">${isDone ? '✓' : s.n}</div>
+                        <div class="step-name">${s.name}</div>
+                    </div>
+                `;
+            });
+            stepsHtml += '</div>';
+            
+            let html = stepsHtml;
             
             if (createData.step === 1) {
-                // Шаг 1: Период (ползунок + поле ввода)
-                html += `
-                    <div class="section-title">⏱️ Выберите период</div>
-                    <div class="subscription-card">
-                        <div class="slider-container">
-                            <div class="slider-label">
-                                <span>Количество дней</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <input type="range" min="1" max="365" value="${createData.days}" 
-                                       oninput="createData.days = parseInt(this.value); document.getElementById('daysInput').value = this.value;"
-                                       style="flex: 1;">
-                                <input type="number" id="daysInput" value="${createData.days}" min="1" max="365" 
-                                       onchange="createData.days = parseInt(this.value); if(this.value < 1) this.value = 1; if(this.value > 365) this.value = 365; this.value = createData.days;"
-                                       style="width: 70px; padding: 8px; background: var(--bg-secondary); border: 1px solid #333; border-radius: 8px; color: var(--accent); font-size: 18px; text-align: center;">
-                                <span style="color: var(--text-secondary);">дней</span>
-                            </div>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary" onclick="createData.step = 2; renderCreateStep()">
-                        Далее →
-                    </button>
-                `;
-            } else if (createData.step === 2) {
-                // Шаг 2: Трафик (ползунок + поле ввода) + Сброс
-                html += `
-                    <div class="section-title">📊 Выберите трафик</div>
-                    <div class="subscription-card">
-                        <div class="slider-container">
-                            <div class="slider-label">
-                                <span>Лимит трафика</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <input type="range" min="1" max="100" value="${createData.traffic}" 
-                                       oninput="createData.traffic = parseInt(this.value); document.getElementById('trafficInput').value = this.value;"
-                                       style="flex: 1;">
-                                <input type="number" id="trafficInput" value="${createData.traffic}" min="1" max="100" 
-                                       onchange="createData.traffic = parseInt(this.value); if(this.value < 1) this.value = 1; if(this.value > 100) this.value = 100; this.value = createData.traffic;"
-                                       style="width: 70px; padding: 8px; background: var(--bg-secondary); border: 1px solid #333; border-radius: 8px; color: var(--accent); font-size: 18px; text-align: center;">
-                                <span style="color: var(--text-secondary);">GB</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="section-title">🔄 Сброс трафика</div>
-                    <div class="subscription-card">
-                        <select class="custom-select" onchange="createData.traffic_reset = this.value; renderCreateStep()">
-                            ${resetOptions.map(opt => `
-                                <option value="${opt.value}" ${opt.value === createData.traffic_reset ? 'selected' : ''}>
-                                    ${opt.label}
-                                </option>
-                            `).join('')}
-                        </select>
-                    </div>
-                    
-                    <button class="btn btn-secondary" onclick="createData.step = 1; renderCreateStep()">
-                        ← Назад
-                    </button>
-                    <button class="btn btn-primary" onclick="createData.step = 3; renderCreateStep()">
-                        Далее →
-                    </button>
-                `;
-            } else if (createData.step === 3) {
-                // Шаг 3: Устройства (счётчик)
-                html += `
-                    <div class="section-title">📱 Количество устройств</div>
-                    <div class="subscription-card">
-                        <div class="counter-container">
-                            <button class="counter-btn" onclick="if(createData.devices > 1) { createData.devices--; renderCreateStep(); }">-</button>
-                            <div class="counter-value">${createData.devices}</div>
-                            <button class="counter-btn" onclick="if(createData.devices < 10) { createData.devices++; renderCreateStep(); }">+</button>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="createData.step = 2; renderCreateStep()">
-                        ← Назад
-                    </button>
-                    <button class="btn btn-primary" onclick="goToStep4()">
-                        Далее →
-                    </button>
-                `;
-            } else if (createData.step === 4) {
-                // Шаг 4: Серверы (из кэша сквадов)
-                const servers = squadsCache || [
-                    { id: 'RU', name: '🇷🇺 Россия', price: 0 },
-                    { id: 'FI', name: '🇫🇮 Finland', price: 45 },
-                    { id: 'DE', name: '🇩🇪 Germany', price: 45 },
-                    { id: 'UK', name: '🇬🇧 UK', price: 45 },
-                    { id: 'NL', name: '🇳🇱 Netherlands', price: 45 }
-                ];
-                
-                let checkboxesHtml = '<div class="checkbox-list">';
-                servers.forEach(s => {
-                    const selected = createData.servers.includes(s.id) ? 'selected' : '';
-                    const priceText = s.price > 0 ? ` (+${s.price}₽/мес)` : '';
-                    checkboxesHtml += `
-                        <div class="checkbox-item ${selected}" onclick="toggleServer('${s.id}')">
-                            <div class="checkbox-custom"></div>
-                            <span>${s.name}${priceText}</span>
+                // Шаг 1: Выбор периода — пресеты
+                let presetsHtml = '';
+                [14, 30, 90, 180, 365].forEach(d => {
+                    const sel = createData.period === d ? 'selected' : '';
+                    presetsHtml += `
+                        <div class="period-preset ${sel}" onclick="createData.period = ${d}; createData.step = 2; renderCreateStep();">
+                            <div class="p-label">${PERIOD_LABELS[d]}</div>
+                            <div class="p-price">${PERIOD_PRICES[d]} ₽</div>
                         </div>
                     `;
                 });
-                checkboxesHtml += '</div>';
                 
                 html += `
-                    <div class="section-title">🌍 Выберите серверы</div>
-                    <div class="subscription-card">
-                        ${checkboxesHtml}
+                    <div class="section-title">⏱️ Выберите период подписки</div>
+                    <div class="period-grid">${presetsHtml}</div>
+                    <div class="card" style="margin-top: 8px;">
+                        <div style="font-size: 13px; color: var(--text-muted); text-align: center;">
+                            Трафик: <span style="color: var(--accent); font-weight: 600;">50 GB</span> включено &nbsp;•&nbsp; 
+                            Устройств: <span style="color: var(--accent); font-weight: 600;">1</span> включено
+                        </div>
                     </div>
-                    <button class="btn btn-secondary" onclick="createData.step = 3; renderCreateStep()">
-                        ← Назад
-                    </button>
-                    <button class="btn btn-primary" onclick="createData.step = 5; renderCreateStep()">
-                        Далее →
-                    </button>
+                    ${renderPricePanel()}
                 `;
-            } else if (createData.step === 5) {
-                // Шаг 5: Итого и оплата
-                const price = calculatePrice();
-                const resetLabel = resetOptions.find(r => r.value === createData.traffic_reset)?.label || 'Раз в месяц';
-                const serverNames = createData.servers.map(id => {
-                    const s = [{id:'FI',name:'Finland'},{id:'DE',name:'Germany'},{id:'UK',name:'UK'},{id:'NL',name:'Netherlands'},{id:'RU',name:'Russia'}].find(x => x.id === id);
-                    return s ? s.name : id;
-                }).join(', ') || 'Не выбраны';
+            } else if (createData.step === 2) {
+                // Шаг 2: Серверы + Устройства
+                const servers = [
+                    { id: 'RU', name: '🇷🇺 Россия', extra: 0 },
+                    { id: 'FI', name: '🇫🇮 Finland', extra: 0 },
+                    { id: 'DE', name: '🇩🇪 Germany', extra: 0 },
+                    { id: 'UK', name: '🇬🇧 UK', extra: 0 },
+                    { id: 'NL', name: '🇳🇱 Netherlands', extra: 0 },
+                    { id: 'FR', name: '🇫🇷 France', extra: 0 }
+                ];
                 
-                // Скидка
-                let discountText = '';
-                if (createData.days >= 365) discountText = '<span style="color: var(--success);">-30% (год)</span>';
-                else if (createData.days >= 180) discountText = '<span style="color: var(--success);">-20% (6 мес)</span>';
-                else if (createData.days >= 90) discountText = '<span style="color: var(--success);">-15% (3 мес)</span>';
+                let chipsHtml = '';
+                servers.forEach(s => {
+                    const sel = createData.servers.includes(s.id) ? 'selected' : '';
+                    const extraTxt = s.extra > 0 ? `<span class="chip-price">+${s.extra}₽/мес</span>` : '<span class="chip-price">✓</span>';
+                    chipsHtml += `
+                        <div class="chip ${sel}" onclick="toggleServer('${s.id}')">
+                            <div class="chip-check">${sel ? '✓' : ''}</div>
+                            ${s.name} ${extraTxt}
+                        </div>
+                    `;
+                });
                 
-                // Старая и новая цена
-                const priceOld = price.oldPrice;
-                const priceNew = price.price;
-                const hasDiscount = priceOld !== priceNew;
+                html += `
+                    <div class="section-title">📱 Устройства</div>
+                    <div class="card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">Количество устройств</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">1 включено, +30₽/мес за каждое доп.</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <button class="btn btn-secondary" onclick="if(createData.devices>1){createData.devices--;renderCreateStep();}" style="width: 40px; height: 40px; padding: 0; border-radius: 50%; margin-top: 0;">−</button>
+                                <span style="font-size: 22px; font-weight: 800; color: var(--accent); min-width: 24px; text-align: center;">${createData.devices}</span>
+                                <button class="btn btn-secondary" onclick="if(createData.devices<10){createData.devices++;renderCreateStep();}" style="width: 40px; height: 40px; padding: 0; border-radius: 50%; margin-top: 0;">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-title">🌍 Серверы</div>
+                    <div class="chips-grid">${chipsHtml}</div>
+                    
+                    <div class="section-title">📊 Трафик</div>
+                    <div class="card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">50 GB включено</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">Безлимит — единоразовая доплата</div>
+                            </div>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="unlimitedChk" ${createData.unlimited ? 'checked' : ''} onchange="createData.unlimited = this.checked; renderCreateStep();" style="width: 22px; height: 22px; accent-color: var(--accent);">
+                                <span style="font-weight: 600; color: var(--accent);">+100 ₽</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-ghost" onclick="createData.step = 1; renderCreateStep();" style="margin-top: 16px;">
+                        ← Назад к периоду
+                    </button>
+                    ${renderPricePanel()}
+                `;
+            } else if (createData.step === 3) {
+                // Шаг 3: Итог + Оплата
+                const p = calculatePrice();
+                const serverNames = createData.servers.length > 0 
+                    ? createData.servers.map(id => ({'RU':'🇷🇺 Россия','FI':'🇫🇮 Finland','DE':'🇩🇪 Germany','UK':'🇬🇧 UK','NL':'🇳🇱 Netherlands','FR':'🇫🇷 France'}[id] || id)).join(', ')
+                    : 'Не выбраны';
+                const months = PERIOD_DAYS[createData.period] || 1;
+                const extraDevices = Math.max(0, createData.devices - 1);
                 
                 html += `
                     <div class="section-title">📋 Ваш тариф</div>
-                    <div class="subscription-card">
-                        <div class="sub-info">
-                            <div class="sub-info-item">
-                                <div class="label">Период</div>
-                                <div class="value">${createData.days} дней ${discountText ? '' + discountText + '' : ''}</div>
-                            </div>
-                            <div class="sub-info-item">
-                                <div class="label">Трафик</div>
-                                <div class="value">${createData.traffic} GB</div>
-                            </div>
-                            <div class="sub-info-item">
-                                <div class="label">Сброс трафика</div>
-                                <div class="value">${resetLabel}</div>
-                            </div>
-                            <div class="sub-info-item">
-                                <div class="label">Устройства</div>
-                                <div class="value">${createData.devices}</div>
-                            </div>
-                            <div class="sub-info-item">
-                                <div class="label">Серверы</div>
-                                <div class="value">${serverNames}</div>
-                            </div>
+                    <div class="summary-card">
+                        <div class="summary-row">
+                            <span class="label">Период</span>
+                            <span class="value">${PERIOD_LABELS[createData.period]} (${createData.period} дней)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Трафик</span>
+                            <span class="value">${createData.unlimited ? '∞ Безлимит' : '50 GB'}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Устройства</span>
+                            <span class="value">${createData.devices} ${extraDevices > 0 ? `(+${extraDevices} доп.)` : ''}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Серверы</span>
+                            <span class="value" style="font-size: 12px;">${serverNames}</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span class="label">Итого</span>
+                            <span class="value">${p.total} ₽</span>
                         </div>
                     </div>
                     
-                    <div class="total-card" style="${hasDiscount ? 'background: linear-gradient(135deg, var(--bg-card), #134e3d);' : ''}">
-                        ${hasDiscount ? '<div style="font-size: 14px; font-weight: 600; color: var(--success); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">🎉 Скидка за период!</div>' : '<div class="label">Итого к оплате</div>'}
-                        <div style="display: flex; align-items: baseline; justify-content: center; gap: 12px;">
-                            ${hasDiscount ? '<span style="font-size: 20px; color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--danger); text-decoration-thickness: 2px;">' + priceOld + ' ₽</span>' : ''}
-                            <span style="font-size: 36px; font-weight: 700; color: ${hasDiscount ? 'var(--success)' : 'var(--text-primary)'};">${priceNew} ₽</span>
-                        </div>
-                    </div>
-                    
-                    <button class="btn btn-secondary" onclick="goToStep4()">
+                    <button class="btn btn-ghost" onclick="createData.step = 2; renderCreateStep();" style="margin-top: 8px;">
                         ← Назад
                     </button>
-                    <button class="btn btn-primary" onclick="createSubscription()">
-                        ➕ Создать подписку
+                    <button class="btn btn-primary" onclick="createSubscription();">
+                        💳 Оплатить ${p.total} ₽
                     </button>
                 `;
             }
@@ -1928,62 +2248,49 @@
         }
         
         function toggleServer(id) {
-            const index = createData.servers.indexOf(id);
-            if (index > -1) {
-                createData.servers.splice(index, 1);
-            } else {
-                createData.servers.push(id);
-            }
+            const idx = createData.servers.indexOf(id);
+            if (idx > -1) createData.servers.splice(idx, 1);
+            else createData.servers.push(id);
             renderCreateStep();
         }
-        
+            
         function calculatePrice() {
-            // Интервал сброса в днях
-            const resetIntervals = {
-                'daily': 1,
-                'weekly': 7,
-                'monthly': 30,
-                'no_reset': 999999 // большое число
+            // Новый план: фиксированные цены за период + допы
+            const basePrice = PERIOD_PRICES[createData.period] || 129;
+            
+            // Доп. устройства: +30₽/мес × количество месяцев
+            const months = PERIOD_DAYS[createData.period] || 1;
+            const extraDevices = Math.max(0, createData.devices - 1);
+            const devicesPrice = extraDevices * 30 * months;
+            
+            // Безлимит: +100₽ фиксированно
+            const unlimitedPrice = createData.unlimited ? 100 : 0;
+            
+            const total = basePrice + devicesPrice + unlimitedPrice;
+            
+            return {
+                base: basePrice,
+                devices: devicesPrice,
+                unlimited: unlimitedPrice,
+                total: total
             };
-            
-            const interval = resetIntervals[createData.traffic_reset] || 30;
-            
-            // Количество сбросов = ceil(дней / интервал)
-            // Например: 10 дней / 7 = 1.43 → 2 сброса (на 7й и 14й день, но 14й за пределами)
-            let resetCount = Math.ceil(createData.days / interval);
-            if (interval === 999999) resetCount = 1; // no_reset = 1 "сброс" (то есть сброса нет)
-            
-            // Множитель трафика = 1 + количество сбросов
-            // Если сброса нет (no_reset) = 1
-            // Если daily 10 дней = 1 + 10 = 11 раз
-            // Если weekly 10 дней = 1 + 2 = 3 (сброс на 7й день)
-            const trafficMultiplier = (createData.traffic_reset === 'no_reset') ? 1 : (1 + resetCount - 1);
-            const actualResets = (createData.traffic_reset === 'no_reset') ? 1 : resetCount;
-            
-            // Скидка за период
-            let discount = 1;
-            if (createData.days >= 365) {
-                discount = 0.7; // 30% скидка за год
-            } else if (createData.days >= 180) {
-                discount = 0.8; // 20% скидка за 6 мес
-            } else if (createData.days >= 90) {
-                discount = 0.85; // 15% скидка за 3 мес
-            }
-            
-            // Базовая цена (без скидки):
-            // 4.5₽ × дни + 2₽ × GB × количество_сбросов + 25₽ × устр + 45₽ × серверы
-            const serversCount = createData.servers.length || 1;
-            const oldPrice = Math.round(
-                createData.days * 4.5 + 
-                createData.traffic * 2 * actualResets +
-                createData.devices * 25 + 
-                serversCount * 45
-            );
-            
-            // Цена со скидкой
-            const price = Math.round(oldPrice * discount);
-            
-            return { price, oldPrice };
+        }
+        
+        function renderPricePanel() {
+            const p = calculatePrice();
+            return `
+                <div class="floating-price">
+                    <div class="floating-price-inner">
+                        <div>
+                            <div class="floating-price-label">К оплате</div>
+                            <div class="floating-price-value">${p.total} ₽</div>
+                        </div>
+                        <button class="btn btn-primary" onclick="createData.step = 3; renderCreateStep();" style="width: auto; margin-top: 0; padding: 12px 24px;">
+                            Далее →
+                        </button>
+                    </div>
+                </div>
+            `;
         }
         
         async function createTrial() {
@@ -1993,7 +2300,7 @@
             let telegramId = null;
             const params = new URLSearchParams(window.location.search);
             telegramId = params.get('user_id') || params.get('telegram_id');
-            if (!telegramId && typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (!telegramId && tg && tg.initDataUnsafe?.user?.id) {
                 telegramId = tg.initDataUnsafe.user.id;
             }
             
@@ -2022,7 +2329,7 @@
             
             // Get telegramId
             let telegramId = null;
-            if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+            if (tg && tg.initDataUnsafe?.user?.id) {
                 telegramId = tg.initDataUnsafe.user.id;
             }
             if (!telegramId) {
@@ -2036,25 +2343,26 @@
             }
             
             try {
-                const serversParam = createData.servers.join(',');
-                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.days}&traffic=${createData.traffic}&devices=${createData.devices}&servers=${serversParam}&traffic_reset=${createData.traffic_reset}&price=${price.price}`;
+                const serversParam = createData.servers.join(',') || 'RU';
+                const url = `${API_BASE}/api/subscription/create?user_id=${telegramId}&days=${createData.period}&traffic=${createData.unlimited ? 999999 : 50}&devices=${createData.devices}&servers=${serversParam}&traffic_reset=no_reset&price=${price.total}`;
                 
                 const response = await fetch(url, { method: 'POST' });
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert('✅ Подписка создана! Переходим к оплате...');
-                    // Обновляем данные и показываем подписку для оплаты
+                    // Показываем что получили
+                    if (tg) tg.showAlert('✅ Подписка создана! Переходим к оплате...');
+                    else alert('✅ Подписка создана! Переходим к оплате...');
                     await loadData();
-                    // Переходим к созданной подписке
-                    // Находим созданную подписку в массиве
                     selectedSubscription = subscriptions.find(s => s.id === data.subscription_id);
                     renderSubscriptionDetail();
                 } else {
-                    alert('❌ Ошибка: ' + (data.error || 'Unknown'));
+                    if (tg) tg.showAlert('❌ ' + (data.error || 'Ошибка'));
+                    else alert('❌ ' + (data.error || 'Ошибка'));
                 }
             } catch (e) {
-                alert('❌ Ошибка: ' + e.message);
+                if (tg) tg.showAlert('❌ Ошибка: ' + e.message);
+                else alert('❌ Ошибка: ' + e.message);
             }
         }
         
