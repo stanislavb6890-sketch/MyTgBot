@@ -14,7 +14,7 @@ from config import BOT_TOKEN, WEBHOOK_URL, ADMIN_ID
 from bot.utils.database import init_db
 from bot.handlers import (
     start_router, tariff_router, profile_router, 
-    trial_router, payment_router
+    trial_router, payment_router, link_router
 )
 from bot.handlers.admin import admin_router
 from bot.handlers.payment import yoomoney_webhook
@@ -84,10 +84,27 @@ async def web_server():
         app.router.add_get('/admin/login', lambda r: web.FileResponse(admin_path / 'login.html'))
         app.router.add_get('/admin/{file:.*}', lambda r: web.FileResponse(admin_path / r.match_info['file']))
     
+    # Graceful restart: SO_REUSEADDR чтобы брать порт даже в TIME_WAIT
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.bind(('0.0.0.0', 8080))
+        sock.close()
+    except OSError:
+        logger.warning("⚠️ Порт 8080 занят, kill + retry...")
+        import subprocess
+        subprocess.run(['fuser', '-k', '8080/tcp'], stderr=subprocess.DEVNULL)
+        await asyncio.sleep(2)
+        try:
+            sock.bind(('0.0.0.0', 8080))
+            sock.close()
+        except OSError:
+            logger.error("⚠️ Не удалось занять порт 8080")
+    
     runner = web.AppRunner(app)
     await runner.setup()
-    
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    site = web.TCPSite(runner, '0.0.0.0', 8080, reuse_address=True)
     await site.start()
     
     logger.info("🌐 Веб-сервер запущен на порту 8080")
@@ -119,6 +136,7 @@ async def main():
     dp.include_router(trial_router)
     dp.include_router(payment_router)
     dp.include_router(admin_router)
+    dp.include_router(link_router)
     
     # Запускаем on_startup
     await on_startup(bot)

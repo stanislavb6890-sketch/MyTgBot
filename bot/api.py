@@ -3,6 +3,8 @@ import json
 import logging
 from aiohttp import web
 from bot.utils.database import get_db, get_user_subscriptions, get_user_by_telegram
+from bot.web_auth import setup_web_auth_routes
+from bot.web_panel import setup_web_panel_routes
 
 logger = logging.getLogger(__name__)
 
@@ -261,15 +263,15 @@ async def update_subscription_servers(request):
 
 
 async def get_addons_price(request):
-    """Получить стоимость дополнений"""
-    # Цена за сервер = 45₽
-    # Цена за 1GB трафика = 2₽
-    # Цена за 1 устройство = 25₽
+    """Получить стоимость дополнений (обновлённые цены)
     
+    NOTE: Эти цены used только если фронтенд не передаёт свою цену.
+    Вебapp использует price_from_frontend поэтому эта функция резервная.
+    """
     return web.json_response({
-        'server_price': 45,
-        'traffic_price_per_gb': 2,
-        'device_price': 25
+        'server_price': 45,        # за каждый доп. сервер
+        'traffic_price': 100,     # безлимит разово (не за GB)
+        'device_price': 30,       # за доп. устройство
     })
 
 
@@ -630,34 +632,17 @@ async def create_subscription_api(request):
         vpn_username = f"user{telegram_id}_{purchase_count:03d}"
     
     # Рассчитываем цену по формуле Mini App
-    # Множитель = количество сбросов (ceil(дней / интервал))
-    # 4.5₽ × дни + 2₽ × GB × сбросы + 25₽ × устройства + 45₽ × серверы
-    
-    # Интервал сброса
-    reset_intervals = {'no_reset': 999999, 'daily': 1, 'weekly': 7, 'monthly': 30}
-    interval = reset_intervals.get(traffic_reset, 30)
-    
-    # Количество сбросов = ceil(дней / интервал)
-    import math
-    reset_count = math.ceil(days / interval) if interval < 999999 else 1
-    
-    servers_count = len(servers)
-    base_price = days * 4.5 + traffic * 2 * reset_count + devices * 25 + servers_count * 45
-    
-    # Скидка за период
-    discount = 1
-    if days >= 365:
-        discount = 0.7
-    elif days >= 180:
-        discount = 0.8
-    elif days >= 90:
-        discount = 0.85
-    
-    price = round(base_price * discount)
-    
-    # Используем цену с фронтенда, если передана
+    # Цена всегда приходит с фронтенда (вебapp) через price_from_frontend
+    # Резервный расчёт (не используется): BASE_PRICE из config
+    from config import TARIFF_BASE_PRICE_PER_DAY
     if price_from_frontend > 0:
         price = price_from_frontend
+    else:
+        # Фоллбэк: простая формула (не точная, для совместимости)
+        import math
+        servers_count = len(servers)
+        base_price = days * TARIFF_BASE_PRICE_PER_DAY + devices * 30 + servers_count * 45
+        price = round(base_price)
     
     import uuid as uuid_module
     import random
@@ -928,43 +913,17 @@ async def get_renewal_options(request):
         return web.json_response({'error': 'subscription not found'}, status=404)
     
     duration_days, traffic_bytes, devices, reset_type, servers_count = row
-    traffic_gb = traffic_bytes / (1024**3) if traffic_bytes else 10
+    traffic_gb = traffic_bytes / (1024**3) if traffic_bytes else 50
     
-    # Интервалы reset
-    reset_intervals = {
-        'NO_RESET': 999999,
-        'DAY': 1,
-        'WEEK': 7,
-        'MONTH': 30,
-        'none': 999999
-    }
-    interval = reset_intervals.get(reset_type, 30)
-    
-    # Варианты продления с правильным расчётом цены
-    import math
+    # Варианты продления (цены из config TARIFFS)
     options = []
-    for days in [30, 90, 180, 365]:
-        # Количество сбросов = ceil(дней / интервал)
-        reset_count = math.ceil(days / interval) if interval < 999999 else 1
-        
-        # Базовая цена: 4.5₽ × дни + 2₽ × GB × сбросы + 25₽ × устройства + 45₽ × серверы
-        base_price = days * 4.5 + traffic_gb * 2 * reset_count + devices * 25 + servers_count * 45
-        
-        # Скидка за период
-        discount = 1
-        if days >= 365:
-            discount = 0.7
-        elif days >= 180:
-            discount = 0.8
-        elif days >= 90:
-            discount = 0.85
-        
-        price = round(base_price * discount)
-        
-        name = {30: '1 месяц', 90: '3 месяца', 180: '6 месяцев', 365: '1 год'}[days]
+    renewal_prices = {14: 79, 30: 129, 90: 349, 180: 619, 365: 999}
+    renewal_names = {14: '14 дней', 30: '1 месяц', 90: '3 месяца', 180: '6 месяцев', 365: '1 год'}
+    for days in [14, 30, 90, 180, 365]:
+        price = renewal_prices[days]
         options.append({
             'days': days, 
-            'name': name, 
+            'name': renewal_names[days], 
             'price': price,
             'traffic': traffic_gb,
             'devices': devices
@@ -1047,33 +1006,19 @@ async def renew_subscription(request):
     }
     traffic_reset = traffic_reset_map.get(traffic_reset_param, 'MONTH')
     
-    # Рассчитываем цену с учётом traffic_reset
-    reset_intervals = {
-        'no_reset': 999999,
-        'daily': 1,
-        'weekly': 7,
-        'monthly': 30
-    }
-    interval = reset_intervals.get(traffic_reset_param, 30)
+    # Фиксированные цены за период (из TARIFFS)
+    period_prices = {14: 79, 30: 129, 90: 349, 180: 619, 365: 999}
+    price = period_prices.get(days, 129)  # дефолт 1 месяц
     
-    # Количество сбросов = ceil(дней / интервал)
-    import math
-    reset_count = math.ceil(days / interval) if interval < 999999 else 1
+    # Доплата за доп. устройства: +30₽/мес × кол-во месяцев
+    extra_devices = max(0, devices - 1)
+    months = max(1, round(days / 30))
+    price += extra_devices * 30 * months
     
-    # Базовая цена: 4.5₽ × дни + 2₽ × GB × сбросы + 25₽ × устройства + 45₽ × серверы
+    # Доплата за доп. серверы: +45₽/мес × кол-во месяцев
     servers_count = len(servers) if servers else 1
-    base_price = days * 4.5 + traffic * 2 * reset_count + devices * 25 + servers_count * 45
-    
-    # Скидка за период
-    discount = 1
-    if days >= 365:
-        discount = 0.7
-    elif days >= 180:
-        discount = 0.8
-    elif days >= 90:
-        discount = 0.85
-    
-    price = round(base_price * discount)
+    extra_servers = max(0, servers_count - 1)
+    price += extra_servers * 45 * months
     
     # Проверяем баланс
     if balance < price:
@@ -2286,8 +2231,45 @@ async def admin_auth(request):
     return web.json_response({'error': 'Access denied'}, status=403)
 
 
+async def db_browser(request):
+    """Веб-интерфейс для просмотра БД (безопасная версия)"""
+    import sqlite3 as _s
+    DB_PATH = '/root/.openclaw/workspace/vpn-bot/vpn_bot.db'
+    ALLOWED = {'users', 'subscriptions', 'payments', 'subscription_servers', 'tariffs', 'servers', 'broadcasts'}
+    
+    table = request.query.get('table', 'users')
+    limit = min(int(request.query.get('limit', 100)), 500)
+    
+    if table not in ALLOWED:
+        return web.Response(text='Invalid table name', content_type='text/plain', status=400)
+    
+    def _esc(s):
+        if s is None: return ''
+        return str(s).replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;').replace("'",'&#39;')
+    
+    conn = _s.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute(f'SELECT * FROM {table} LIMIT {limit}')
+        rows = c.fetchall()
+        c.execute(f'PRAGMA table_info({table})')
+        cols = [r[1] for r in c.fetchall()]
+    except Exception as e:
+        conn.close()
+        return web.Response(text='Error: ' + _esc(str(e)), content_type='text/plain')
+    conn.close()
+    
+    cnt = len(rows)
+    nav = ''.join(f'<a href="/db?table={t}">{t}</a> ' for t in sorted(ALLOWED))
+    ths = ''.join(f'<th>{_esc(c)}</th>' for c in cols)
+    trs = ''.join('<tr>'+''.join(f'<td>{_esc(str(v))}</td>' for v in row)+'</tr>' for row in rows)
+    html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>DB</title><style>*{margin:0;padding:0}body{font-family:system-ui;background:#0f0f1a;color:#eee;padding:20px}h1{color:#a78bfa;margin-bottom:15px}a{color:#a78bfa;padding:6px 12px;background:#1a1a2e;border-radius:6px;margin-right:8px;text-decoration:none}table{width:100%;border-collapse:collapse}th{background:#1a1a2e;padding:8px;text-align:left}td{padding:6px;border-bottom:1px solid #222}tr:hover td{background:#1a1a2e}</style></head><body><h1>Database</h1><div>'+nav+'</div><p>'+str(cnt)+' rows</p><table><tr>'+ths+'</tr>'+trs+'</table></body></html>'
+    return web.Response(text=html, content_type='text/html')
+
+
 def setup_api_routes(app):
     """Настроить API маршруты"""
+    app.router.add_get('/db', db_browser)
     app.router.add_get('/api/squads', get_squads)
     app.router.add_get('/api/subscription/servers', get_subscription_servers)
     app.router.add_post('/api/subscription/servers', update_subscription_servers)
@@ -2343,5 +2325,13 @@ def setup_api_routes(app):
     # Авторизация
     app.router.add_post('/api/admin/login', admin_login)
     app.router.add_get('/api/admin/auth', admin_auth)
+    app.router.add_get("/db", db_browser)
+    
+    # Web Panel auth routes
+    setup_web_auth_routes(app)
+    setup_web_panel_routes(app)
     
     logger.info("✅ API routes настроены")
+
+
+

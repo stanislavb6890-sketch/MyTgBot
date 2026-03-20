@@ -1,28 +1,17 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.venv/
-venv/
-*.egg-info/
-
-# Logs
-*.log
-logs/
-notifications.log
-traffic_update.log
-bot.log
-
-# Database
+*.pyc
+*.pyo
 *.db
-*.sqlite
-
-# Environment
-.env
-.env.local
-
-# IDE
-.idea/
-.vscode/
-*.swp
+*.log
+vpn_bot.db
+notifications.log
+bot.log
+venv/
+env/
+add_db.py
+_add_db.py
+*.pre-cleanup
+*.backup
+api_backup.py
+api_clean.py
+db_browser.py

@@ -5,6 +5,7 @@ from bot.handlers.profile import router as profile_router
 from bot.handlers.trial import router as trial_router
 from bot.handlers.payment import router as payment_router
 from bot.handlers.admin import admin_router
+from bot.handlers.link import router as link_router
 
 __all__ = [
     "start_router",
@@ -13,4 +14,5 @@ __all__ = [
     "trial_router",
     "payment_router",
     "admin_router",
+    "link_router",
 ]

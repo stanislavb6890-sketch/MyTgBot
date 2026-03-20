@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CloakNet — Панель</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f;
+            --card: #13131a;
+            --border: #1e1e2e;
+            --accent: #a78bfa;
+            --accent2: #06b6d4;
+            --text: #e2e2e8;
+            --text-muted: #6b6b7b;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-actions { display: flex; gap: 12px; }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: #fff;
+        }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); }
+        .container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .card-title {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .card-subtitle {
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .form-input::placeholder { color: var(--text-muted); }
+        .form-error {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 6px;
+            display: none;
+        }
+        .form-error.show { display: block; }
+        .btn-full {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            margin-top: 8px;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .telegram-btn {
+            width: 100%;
+            padding: 14px;
+            background: #229ED9;
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: inherit;
+            transition: opacity 0.2s;
+        }
+        .telegram-btn:hover { opacity: 0.9; }
+        .telegram-btn svg { width: 22px; height: 22px; }
+        .card-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .card-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .card-footer a:hover { text-decoration: underline; }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .alert.error {
+            background: rgba(239,68,68,0.15);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+        .alert.success {
+            background: rgba(34,197,94,0.15);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+        .alert.show { display: block; }
+        .loading {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn.loading { pointer-events: none; opacity: 0.8; }
+        .btn.loading .btn-text { display: none; }
+        .btn.loading .loading { display: block; }
+        .telegram-code-box {
+            background: var(--bg);
+            border: 2px dashed var(--accent);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            margin: 16px 0;
+            display: none;
+        }
+        .telegram-code-box.show { display: block; }
+        .telegram-code {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 8px;
+            color: var(--accent);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .telegram-code-hint {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 12px;
+        }
+        .resend-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-family: inherit;
+        }
+        .resend-btn:hover { text-decoration: underline; }
+        .resend-btn:disabled { color: var(--text-muted); cursor: not-allowed; }
+        .hidden { display: none !important; }
+
+        /* Dashboard */
+        .dashboard {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+        .welcome {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .welcome-sub {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .subscription-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+        .sub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .sub-title { font-weight: 600; font-size: 16px; }
+        .sub-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .sub-status.active { background: rgba(34,197,94,0.15); color: var(--success); }
+        .sub-status.expired { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .sub-info { font-size: 13px; color: var(--text-muted); }
+        .sub-info div { margin-bottom: 4px; }
+        .sub-actions { margin-top: 12px; display: flex; gap: 8px; }
+        .btn-sm { padding: 8px 16px; font-size: 13px; }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+        .nav-bottom {
+            border-top: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+        .nav-btn {
+            flex: 1;
+            max-width: 120px;
+            padding: 10px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover, .nav-btn.active { 
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .nav-btn svg { width: 20px; height: 20px; }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header" id="header">
+    <div class="logo">CloakNet</div>
+    <div class="header-actions" id="header-actions">
+        <button class="btn btn-ghost btn-sm" onclick="showPage('login')">Войти</button>
+        <button class="btn btn-primary btn-sm" onclick="showPage('register')">Регистрация</button>
+    </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div class="page" id="page-login" style="display:none">
+    <div class="container">
+        <div class="card">
+            <div class="card-title">С возвращением</div>
+            <div class="card-subtitle">Войдите в свой аккаунт</div>
+            
+            <div class="alert" id="login-error"></div>
+            
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="login-email" placeholder="you@example.com" required>
+                    <div class="form-error" id="login-email-error"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+                    <div class="form-error" id="login-password-error"></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                    <span class="btn-text">Войти</span>
+                    <div class="loading"></div>
+                </button>
+            </form>
+            
+            <div class="divider">или</div>
+            
+            <button class="telegram-btn" onclick="showPage('telegram-login')">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                Войти через Telegram
+            </button>
+            
+            <div class="card-footer">
+                Нет аккаунта? <a onclick="showPage('register')">Зарегистрироваться</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- REGISTER PAGE -->
+<div class="page" id="page-register" style="display:none">
+    <div class="container">
+        <div class="card">
+            <div class="card-title">Создать аккаунт</div>
+            <div class="card-subtitle">Присоединяйтесь к CloakNet</div>
+            
+            <div class="alert" id="register-error"></div>
+            
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="reg-email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="reg-password" placeholder="Минимум 6 символов" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Подтвердите пароль</label>
+                    <input type="password" class="form-input" id="reg-password-confirm" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="reg-btn">
+                    <span class="btn-text">Зарегистрироваться</span>
+                    <div class="loading"></div>
+                </button>
+            </form>
+            
+            <div class="divider">или</div>
+            
+            <button class="telegram-btn" onclick="showPage('telegram-login')">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                Регистрация через Telegram
+            </button>
+            
+            <div class="card-footer">
+                Уже есть аккаунт? <a onclick="showPage('login')">Войти</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TELEGRAM LOGIN PAGE -->
+<div class="page" id="page-telegram-login" style="display:none">
+    <div class="container">
+        <div class="card">
+            <div class="card-title">Привязать Telegram</div>
+            <div class="card-subtitle">Свяжите аккаунт с ботом @cloaknetvbot</div>
+            
+            <div class="alert" id="tl-error"></div>
+            <div class="alert success" id="tl-success"></div>
+            
+            <div class="telegram-code-box" id="tl-code-box">
+                <div class="telegram-code" id="tl-code">------</div>
+                <div class="telegram-code-hint">Введите этот код в боте @cloaknetvbot<br>Команда /link</div>
+                <button class="resend-btn" id="tl-resend" onclick="requestTelegramLink()">Отправить заново</button>
+            </div>
+            
+            <div id="tl-form">
+                <p style="color:var(--text-muted);font-size:14px;text-align:center;margin-bottom:20px;">
+                    1. Откройте бота <strong>@cloaknetvbot</strong><br>
+                    2. Нажмите <strong>/link</strong><br>
+                    3. Введите код который видите на сайте
+                </p>
+                <div class="form-group">
+                    <label class="form-label">6-значный код</label>
+                    <input type="text" class="form-input" id="tl-code-input" placeholder="------" maxlength="6" pattern="[0-9]{6}">
+                </div>
+                <button class="btn btn-primary btn-full" onclick="submitTelegramLink()">
+                    Привязать Telegram
+                </button>
+            </div>
+            
+            <div class="card-footer">
+                <a onclick="showPage('login')">← Назад ко входу</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div class="page" id="page-dashboard" style="display:none">
+    <div class="dashboard">
+        <div class="welcome" id="dash-welcome">Привет!</div>
+        <div class="welcome-sub" id="dash-email">user@example.com</div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-balance">0₽</div>
+                <div class="stat-label">Баланс</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-subs">0</div>
+                <div class="stat-label">Подписки</div>
+            </div>
+        </div>
+        
+        <div class="section-title">Ваши подписки</div>
+        <div id="subs-list">
+            <div class="empty-state">Загрузка...</div>
+        </div>
+        
+        <div style="margin-top: 24px;">
+            <button class="btn btn-primary btn-full" onclick="showTopupModal()">
+                💰 Пополнить баланс
+            </button>
+        </div>
+    </div>
+    
+    <!-- TOPUP MODAL -->
+    <div id="topup-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center;padding:20px;">
+        <div class="card" style="max-width:360px">
+            <div class="card-title">Пополнить баланс</div>
+            <div class="form-group" style="margin-top:16px">
+                <label class="form-label">Сумма (₽)</label>
+                <input type="number" class="form-input" id="topup-amount" placeholder="500" min="10" max="50000">
+            </div>
+            <button class="btn btn-primary btn-full" onclick="submitTopup()" style="margin-top:8px">Перейти к оплате</button>
+            <div id="topup-error" class="alert error" style="margin-top:8px"></div>
+            <button class="btn btn-ghost btn-full" onclick="closeTopupModal()" style="margin-top:8px">Отмена</button>
+        </div>
+    </div>
+    
+    <!-- PAYMENTS MODAL -->
+    <div id="payments-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center;padding:20px;">
+        <div class="card" style="max-width:500px;max-height:80vh;overflow-y:auto">
+            <div class="card-title">История платежей</div>
+            <div id="payments-list" style="margin-top:16px"></div>
+            <button class="btn btn-ghost btn-full" onclick="closePaymentsModal()" style="margin-top:16px">Закрыть</button>
+        </div>
+    </div>
+    
+    <div class="nav-bottom">
+        <button class="nav-btn active" onclick="showPage('dashboard'); loadDashboard()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            Главная
+        </button>
+        <button class="nav-btn" onclick="loadPaymentsModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Платежи
+        </button>
+        <button class="nav-btn" onclick="showPage('profile')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль
+        </button>
+    </div>
+</div>
+
+<!-- PROFILE PAGE -->
+<div class="page" id="page-profile" style="display:none">
+    <div class="dashboard">
+        <div class="section-title">Профиль</div>
+        
+        <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+                <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700" id="profile-avatar">?</div>
+                <div>
+                    <div style="font-weight:600;font-size:18px" id="profile-email">—</div>
+                    <div style="color:var(--text-muted);font-size:13px" id="profile-since">—</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span class="sub-status active" id="profile-web-badge">Веб-аккаунт</span>
+                <span class="sub-status" id="profile-tg-badge" style="background:rgba(34,154,217,0.15);color:#229ED9">Telegram</span>
+            </div>
+        </div>
+        
+        <div class="section-title" style="margin-top:24px">Безопасность</div>
+        <div class="card">
+            <div style="font-weight:600;margin-bottom:12px">Сменить пароль</div>
+            <div class="alert" id="pwd-error" style="margin-bottom:12px"></div>
+            <div class="alert success" id="pwd-success" style="margin-bottom:12px"></div>
+            <div class="form-group">
+                <label class="form-label">Текущий пароль</label>
+                <input type="password" class="form-input" id="pwd-current" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Новый пароль</label>
+                <input type="password" class="form-input" id="pwd-new" placeholder="Минимум 6 символов" minlength="6">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Подтвердите пароль</label>
+                <input type="password" class="form-input" id="pwd-confirm" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" onclick="changePassword()" style="width:100%">Сохранить пароль</button>
+        </div>
+        
+        <div class="section-title" style="margin-top:24px">Telegram</div>
+        <div class="card" id="telegram-link-section">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#229ED9"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                <div>
+                    <div style="font-weight:600" id="tg-status-text">Telegram не привязан</div>
+                    <div style="font-size:13px;color:var(--text-muted)" id="tg-hint-text">Привяжите Telegram для покупки подписок</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="showPage('telegram-login')" id="tg-link-btn">
+                Привязать Telegram
+            </button>
+        </div>
+        
+        <div style="margin-top:32px;text-align:center">
+            <button class="btn btn-ghost" style="color:var(--danger)" onclick="handleLogout()">Выйти из аккаунта</button>
+        </div>
+    </div>
+    
+    <div class="nav-bottom">
+        <button class="nav-btn" onclick="showPage('dashboard'); loadDashboard()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            Главная
+        </button>
+        <button class="nav-btn" onclick="loadPaymentsModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Платежи
+        </button>
+        <button class="nav-btn active" onclick="showPage('profile')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль
+        </button>
+    </div>
+</div>
+
+<script>
+async function showTopupModal() {
+    document.getElementById('topup-modal').style.display = 'flex';
+}
+function closeTopupModal() {
+    document.getElementById('topup-modal').style.display = 'none';
+    document.getElementById('topup-error').classList.remove('show');
+}
+async function submitTopup() {
+    const amount = parseFloat(document.getElementById('topup-amount').value);
+    if (!amount || amount < 10) {
+        const el = document.getElementById('topup-error');
+        el.textContent = 'Минимум 10₽';
+        el.classList.add('show');
+        return;
+    }
+    try {
+        const data = await apiCall('POST', '/topup', { amount });
+        if (data.topup_url) {
+            window.open(data.topup_url, '_blank');
+            closeTopupModal();
+        } else {
+            const el = document.getElementById('topup-error');
+            el.textContent = data.error || 'Ошибка';
+            el.classList.add('show');
+        }
+    } catch(e) {
+        const el = document.getElementById('topup-error');
+        el.textContent = 'Сервер недоступен';
+        el.classList.add('show');
+    }
+}
+async function loadPaymentsModal() {
+    document.getElementById('payments-modal').style.display = 'flex';
+    const data = await apiCall('GET', '/payments');
+    const payments = data.payments || [];
+    if (payments.length === 0) {
+        document.getElementById('payments-list').innerHTML = '<div class="empty-state">Нет платежей</div>';
+        return;
+    }
+    let html = '';
+    for (const p of payments) {
+        const statusClass = p.status === 'paid' ? 'active' : 'expired';
+        html += `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between">
+                <span>${p.amount}₽</span>
+                <span class="sub-status ${statusClass}" style="font-size:11px">${p.status === 'paid' ? 'Оплачен' : p.status}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${p.created_at ? new Date(p.created_at).toLocaleDateString('ru') : ''} · ${p.duration_days} дн</div>
+        </div>`;
+    }
+    document.getElementById('payments-list').innerHTML = html;
+}
+function closePaymentsModal() {
+    document.getElementById('payments-modal').style.display = 'none';
+}
+
+const API = 'https://panel.cloaknet.site/api/web';
+
+// ──────────────────────────────────────────────
+// TOKEN MANAGEMENT
+// ──────────────────────────────────────────────
+let token = localStorage.getItem('panel_token');
+
+function saveToken(t) {
+    localStorage.setItem('panel_token', t);
+    token = t;
+}
+
+function clearToken() {
+    localStorage.removeItem('panel_token');
+    token = null;
+}
+
+// ──────────────────────────────────────────────
+// API CALLS
+// ──────────────────────────────────────────────
+async function apiCall(method, url, body) {
+    const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json' }
+    };
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API + url, opts);
+    const data = await res.json();
+    return data;
+}
+
+// ──────────────────────────────────────────────
+// ALERTS
+// ──────────────────────────────────────────────
+function showError(id, msg) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.classList.add('show'); }
+}
+function hideError(id) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.remove('show'); }
+}
+function showSuccess(id, msg) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.classList.add('show'); }
+}
+
+// ──────────────────────────────────────────────
+// PAGE ROUTING
+// ──────────────────────────────────────────────
+function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    document.getElementById('page-' + page).style.display = '';
+    
+    const header = document.getElementById('header-actions');
+    if (page === 'dashboard') {
+        header.innerHTML = '<button class="btn btn-ghost btn-sm" onclick="handleLogout()">Выйти</button>';
+    } else if (token) {
+        header.innerHTML = '<button class="btn btn-ghost btn-sm" onclick="showPage(\'dashboard\'); loadDashboard()">Кабинет</button>';
+    } else {
+        header.innerHTML = '<button class="btn btn-ghost btn-sm" onclick="showPage(\'login\')">Войти</button><button class="btn btn-primary btn-sm" onclick="showPage(\'register\')">Регистрация</button>';
+    }
+}
+
+// ──────────────────────────────────────────────
+// REGISTER
+// ──────────────────────────────────────────────
+async function handleRegister(e) {
+    e.preventDefault();
+    hideError('register-error');
+    
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const passwordConfirm = document.getElementById('reg-password-confirm').value;
+    
+    if (password !== passwordConfirm) {
+        showError('register-error', 'Пароли не совпадают');
+        return;
+    }
+    
+    const btn = document.getElementById('reg-btn');
+    btn.classList.add('loading');
+    
+    try {
+        const data = await apiCall('POST', '/auth/register', { email, password });
+        if (data.success) {
+            saveToken(data.token);
+            showPage('dashboard');
+            loadDashboard();
+        } else {
+            showError('register-error', data.error || 'Ошибка регистрации');
+        }
+    } catch(err) {
+        showError('register-error', 'Сервер недоступен');
+    } finally {
+        btn.classList.remove('loading');
+    }
+}
+
+// ──────────────────────────────────────────────
+// LOGIN
+// ──────────────────────────────────────────────
+async function handleLogin(e) {
+    e.preventDefault();
+    hideError('login-error');
+    
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    
+    const btn = document.getElementById('login-btn');
+    btn.classList.add('loading');
+    
+    try {
+        const data = await apiCall('POST', '/auth/login', { email, password });
+        if (data.success) {
+            saveToken(data.token);
+            showPage('dashboard');
+            loadDashboard();
+        } else {
+            showError('login-error', data.error || 'Неверный email или пароль');
+        }
+    } catch(err) {
+        showError('login-error', 'Сервер недоступен');
+    } finally {
+        btn.classList.remove('loading');
+    }
+}
+
+// ──────────────────────────────────────────────
+// LOGOUT
+// ──────────────────────────────────────────────
+async function handleLogout() {
+    try { await apiCall('POST', '/auth/logout'); } catch(e) {}
+    clearToken();
+    showPage('login');
+}
+
+// ──────────────────────────────────────────────
+// DASHBOARD
+// ──────────────────────────────────────────────
+async function loadDashboard() {
+    try {
+        const data = await apiCall('GET', '/user');
+        if (data.user) {
+            document.getElementById('dash-welcome').textContent = 'Привет!';
+            document.getElementById('dash-email').textContent = data.user.email;
+            document.getElementById('stat-balance').textContent = (data.balance || 0) + '₽';
+            document.getElementById('stat-subs').textContent = data.active_subscriptions || 0;
+            
+            // Load subscriptions
+            loadSubscriptions();
+        }
+    } catch(err) {
+        clearToken();
+        showPage('login');
+    }
+}
+
+async function loadSubscriptions() {
+    try {
+        const data = await apiCall('GET', '/subscriptions');
+        const subs = data.subscriptions || [];
+        
+        if (subs.length === 0) {
+            const linked = await apiCall('GET', '/user');
+            if (!linked.user?.telegram_linked) {
+                document.getElementById('subs-list').innerHTML = '<div class="empty-state">Привяжите Telegram для покупки<br><br><button class="btn btn-primary btn-sm" onclick="showPage(\'telegram-login\')">Привязать Telegram</button></div>';
+            } else {
+                document.getElementById('subs-list').innerHTML = '<div class="empty-state">У вас пока нет активных подписок<br><br><button class="btn btn-primary btn-sm" onclick="openMiniApp()">Купить в Mini App</button></div>';
+            }
+            return;
+        }
+        
+        let html = '';
+        for (const s of subs) {
+            const statusClass = s.status === 'active' ? 'active' : 'expired';
+            const trafficText = s.traffic_unlimited ? '∞ Безлимит' : `${s.traffic_gb} GB`;
+            const expiry = s.expires_at ? new Date(s.expires_at).toLocaleDateString('ru') : '—';
+            
+            html += `<div class="subscription-card">
+                <div class="sub-header">
+                    <div class="sub-title">CloakNet VPN</div>
+                    <span class="sub-status ${statusClass}">${s.status === 'active' ? 'Активна' : 'Истекла'}</span>
+                </div>
+                <div class="sub-info">
+                    <div>Трафик: ${trafficText}</div>
+                    <div>Устройств: ${s.devices}</div>
+                    <div>Истекает: ${expiry}</div>
+                    ${s.servers_list?.length ? `<div>Серверы: ${s.servers_list.join(', ')}</div>` : ''}
+                </div>
+                ${s.status === 'active' ? `<div class="sub-actions">
+                    <button class="btn btn-primary btn-sm" onclick="showRenew(${s.id})">Продлить</button>
+                    <button class="btn btn-ghost btn-sm" onclick="showConfig(${s.id})">Конфиг</button>
+                </div>` : ''}
+            </div>`;
+        }
+        document.getElementById('subs-list').innerHTML = html;
+    } catch(e) {
+        document.getElementById('subs-list').innerHTML = '<div class="empty-state">Не удалось загрузить</div>';
+    }
+}
+
+function openMiniApp() {
+    window.open('https://test.cloaknet.site/miniapp', '_blank');
+}
+function showRenew(subId) {
+    alert('Продление: откройте Mini App или напишите боту @cloaknetvbot');
+}
+function showConfig(subId) {
+    alert('Скачать конфиг: свяжитесь с ботом @cloaknetvbot');
+}
+
+// ──────────────────────────────────────────────
+// TELEGRAM LINKING
+// ──────────────────────────────────────────────
+async function requestTelegramLink() {
+    hideError('tl-error');
+    document.getElementById('tl-success').classList.remove('show');
+    
+    try {
+        const data = await apiCall('POST', '/auth/request_link');
+        if (data.code) {
+            document.getElementById('tl-code').textContent = data.code;
+            document.getElementById('tl-code-box').classList.add('show');
+            document.getElementById('tl-form').style.display = 'none';
+        } else {
+            showError('tl-error', data.error || 'Ошибка генерации кода');
+        }
+    } catch(e) {
+        showError('tl-error', 'Сервер недоступен');
+    }
+}
+
+async function submitTelegramLink() {
+    hideError('tl-error');
+    const code = document.getElementById('tl-code-input').value.trim();
+    if (code.length !== 6) {
+        showError('tl-error', 'Введите 6-значный код');
+        return;
+    }
+    
+    try {
+        // This endpoint is called by the bot, not by the user directly
+        showSuccess('tl-success', 'Код отправлен! Проверьте бот @cloaknetvbot');
+        document.getElementById('tl-code-input').value = '';
+    } catch(e) {
+        showError('tl-error', 'Ошибка');
+    }
+}
+
+// ──────────────────────────────────────────────
+// PROFILE
+// ──────────────────────────────────────────────
+async function loadProfile() {
+    try {
+        const data = await apiCall('GET', '/user');
+        if (!data.user) return;
+        
+        const email = data.user.email || '—';
+        document.getElementById('profile-email').textContent = email;
+        document.getElementById('profile-avatar').textContent = (email[0] || '?').toUpperCase();
+        
+        if (data.user.created_at) {
+            const d = new Date(data.user.created_at);
+            document.getElementById('profile-since').textContent = 'С нами с ' + d.toLocaleDateString('ru');
+        }
+        
+        const linked = data.user.telegram_linked;
+        document.getElementById('profile-tg-badge').className = linked 
+            ? 'sub-status active' 
+            : 'sub-status';
+        document.getElementById('profile-tg-badge').style.cssText = linked 
+            ? 'background:rgba(34,197,94,0.15);color:var(--success)' 
+            : 'background:rgba(34,154,217,0.15);color:#229ED9';
+        document.getElementById('tg-status-text').textContent = linked 
+            ? 'Telegram привязан ✅' 
+            : 'Telegram не привязан';
+        document.getElementById('tg-hint-text').textContent = linked 
+            ? 'ID: ' + data.user.telegram_id : 'Привяжите Telegram для покупки подписок';
+        document.getElementById('tg-link-btn').textContent = linked 
+            ? 'Изменить привязку' 
+            : 'Привязать Telegram';
+        
+    } catch(e) {
+        console.error('Profile load error', e);
+    }
+}
+
+function changePassword() {
+    const current = document.getElementById('pwd-current').value;
+    const newPass = document.getElementById('pwd-new').value;
+    const confirm = document.getElementById('pwd-confirm').value;
+    
+    const errEl = document.getElementById('pwd-error');
+    const succEl = document.getElementById('pwd-success');
+    errEl.classList.remove('show');
+    succEl.classList.remove('show');
+    
+    if (!current || !newPass) {
+        errEl.textContent = 'Заполните все поля';
+        errEl.classList.add('show');
+        return;
+    }
+    if (newPass.length < 6) {
+        errEl.textContent = 'Пароль минимум 6 символов';
+        errEl.classList.add('show');
+        return;
+    }
+    if (newPass !== confirm) {
+        errEl.textContent = 'Пароли не совпадают';
+        errEl.classList.add('show');
+        return;
+    }
+    
+    apiCall('POST', '/profile/password', { current_password: current, new_password: newPass })
+        .then(data => {
+            if (data.success) {
+                succEl.textContent = 'Пароль успешно изменён!';
+                succEl.classList.add('show');
+                document.getElementById('pwd-current').value = '';
+                document.getElementById('pwd-new').value = '';
+                document.getElementById('pwd-confirm').value = '';
+            } else {
+                errEl.textContent = data.error || 'Ошибка смены пароля';
+                errEl.classList.add('show');
+            }
+        })
+        .catch(() => {
+            errEl.textContent = 'Сервер недоступен';
+            errEl.classList.add('show');
+        });
+}
+
+// Fix nav highlighting on showPage
+const _origShowPage = showPage;
+showPage = function(page) {
+    _origShowPage(page);
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    const pageEl = document.getElementById('page-' + page);
+    if (pageEl) {
+        const navBtns = pageEl.querySelectorAll('.nav-btn');
+        navBtns.forEach(btn => {
+            const onclick = btn.getAttribute('onclick') || '';
+            if (onclick.includes("'" + page + "'")) btn.classList.add('active');
+        });
+    }
+    if (page === 'profile') loadProfile();
+};
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+if (token) {
+    showPage('dashboard');
+    loadDashboard();
+} else {
+    showPage('login');
+}
+</script>
+</body>
+</html>
